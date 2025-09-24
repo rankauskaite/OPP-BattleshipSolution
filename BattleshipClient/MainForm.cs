@@ -104,6 +104,7 @@ namespace BattleshipClient
                 lblStatus.Text = "Connected.";
                 var register = new { type = "register", payload = new { playerName = txtName.Text } };
                 await net.SendAsync(register);
+                btnConnect.Enabled = false;
             }
             catch (Exception ex)
             {
@@ -280,6 +281,9 @@ namespace BattleshipClient
             var msg = new { type = "ready", payload = payload };
             await net.SendAsync(msg);
             lblStatus.Text = "Ready sent.";
+            btnReady.Enabled = false;
+            btnPlaceShips.Enabled = false;
+            btnRandomize.Enabled = false;
         }
 
         private void RandomizeShips()

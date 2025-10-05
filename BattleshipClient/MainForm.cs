@@ -17,7 +17,8 @@ namespace BattleshipClient
         private Button btnRandomize;
         private Button btnReady;
         private Button btnPlaceShips;
-        private Button btnGameOver; // Naujas mygtukas
+        private Button btnGameOver; // Naujas mygtukas 
+        private Button btnVsBot;
         private Label lblStatus;
         private GameBoard ownBoard;
         private GameBoard enemyBoard;
@@ -35,7 +36,9 @@ namespace BattleshipClient
         private bool placingShips = false;
         private bool placingHorizontal = true;
 
-        public List<ShipDto> Ships { get; set; } = new List<ShipDto>();
+        public List<ShipDto> Ships { get; set; } = new List<ShipDto>(); 
+
+
 
         public MainForm()
         {
@@ -44,56 +47,153 @@ namespace BattleshipClient
             ownBoard.ShipDropped += OwnBoard_ShipDropped;
             ownBoard.CellClicked += OwnBoard_CellClickedForRemoval;
             btnGameOver.Click += BtnGameOver_Click;
-        }
-
+        } 
+        
         private void InitializeComponents()
         {
+            // DPI-aware forma
+            this.AutoScaleMode = AutoScaleMode.Dpi;
+            this.AutoScaleDimensions = new SizeF(96f, 96f);
+            this.ClientSize = new Size(1100, 720);
             this.Text = "Battleship Client";
-            this.ClientSize = new Size(950, 600);
             this.BackColor = ColorTranslator.FromHtml("#f8f9fa");
 
-            Label l1 = new Label { Text = "Server (ws):", Location = new Point(10, 10), AutoSize = true };
-            txtServer = new TextBox { Text = "ws://localhost:5000/ws/", Location = new Point(100, 10), Width = 300 };
-            Label l2 = new Label { Text = "Name:", Location = new Point(420, 10), AutoSize = true };
-            txtName = new TextBox { Text = "Player", Location = new Point(470, 10), Width = 120 };
+            // --- Valdikliai (laukeliai ir mygtukai) ---
+            var l1 = new Label { Text = "Server (ws):", AutoSize = true, Margin = new Padding(0, 6, 6, 0) };
+            txtServer = new TextBox { Text = "ws://localhost:5000/ws/", Width = 260, Margin = new Padding(0, 2, 12, 0) };
 
-            btnConnect = new Button { Text = "Connect", Location = new Point(600, 8), Width = 80, Height = 30 };
+            var l2 = new Label { Text = "Name:", AutoSize = true, Margin = new Padding(0, 6, 6, 0) };
+            txtName = new TextBox { Text = "Player", Width = 140, Margin = new Padding(0, 2, 12, 0) };
+
+            btnConnect = new Button { Text = "Connect", AutoSize = true, Margin = new Padding(0, 2, 8, 0) };
             btnConnect.Click += BtnConnect_Click;
 
-            btnRandomize = new Button { Text = "Randomize ships", Location = new Point(700, 8), Width = 130, Height = 30 };
+            btnRandomize = new Button { Text = "Randomize ships", AutoSize = true, Margin = new Padding(0, 2, 8, 0) };
             btnRandomize.Click += BtnRandomize_Click;
 
-            btnPlaceShips = new Button { Text = "Place ships", Location = new Point(560, 44), Width = 130, Height = 30 };
+            btnPlaceShips = new Button { Text = "Place ships", AutoSize = true, Margin = new Padding(0, 2, 8, 0) };
             btnPlaceShips.Click += BtnPlaceShips_Click;
 
-            btnReady = new Button { Text = "Ready", Location = new Point(700, 44), Width = 130, Height = 30 };
+            btnReady = new Button { Text = "Ready", AutoSize = true, Margin = new Padding(0, 2, 8, 0) };
             btnReady.Click += BtnReady_Click;
 
-            btnGameOver = new Button { Text = "Game Over", Location = new Point(400, 44), Width = 100, Height = 30, Visible = false };
+            // naujas mygtukas (jei laukas jau deklaruotas – pernaudojam)
+            btnVsBot ??= new Button { Text = "Žaisti su botu", AutoSize = true, Margin = new Padding(0, 2, 8, 0) };
+            btnVsBot.Click -= BtnVsBot_Click; // kad nedubliuotų, jei jau pririštas
+            btnVsBot.Click += BtnVsBot_Click;
 
-            lblStatus = new Label { Text = "Not connected", Location = new Point(10, 40), AutoSize = true };
+            // statuso eilutė po top bar'u
+            lblStatus = new Label { Text = "Not connected", Dock = DockStyle.Bottom, AutoSize = true, Padding = new Padding(8, 6, 8, 6) };
 
-            ownBoard = new GameBoard { Location = new Point(10, 80) };
-            enemyBoard = new GameBoard { Location = new Point(480, 80) };
+            // --- Viršutinė juosta (FlowLayoutPanel) ---
+            var topBar = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                WrapContents = false,
+                Padding = new Padding(8, 8, 8, 0)
+            };
+            topBar.Controls.AddRange(new Control[]
+            {
+                l1, txtServer,
+                l2, txtName,
+                btnConnect, btnRandomize, btnPlaceShips, btnReady, btnVsBot
+            });
+            this.Controls.Add(topBar);
+            this.Controls.Add(lblStatus); // įdedame po topBar (DockStyle.Top)
+
+            // --- Lentos ---
+            ownBoard = new GameBoard();
+            enemyBoard = new GameBoard();
             enemyBoard.CellClicked += EnemyBoard_CellClicked;
 
+            // Dviejų stulpelių konteineris lentoms
+            var boards = new TableLayoutPanel
+            {
+
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 1,
+                Padding = new Padding(16),  
+
+            }; 
+            boards.RowStyles.Clear();
+            boards.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            boards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+            boards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+
+            // Lentos turi plėstis su langu
+
+            boards.Controls.Add(ownBoard,  0, 0);
+            boards.Controls.Add(enemyBoard, 1, 0);
+            this.Controls.Add(boards); 
+
+
+            // --- Lentos (po ownBoard/enemyBoard = new GameBoard() ir event'ų prisirišimo) ---
+
+            // 1) Min. dydis: LabelMargin + CellPx*10 + 1 (tinklelio linijai)
+            int cell = ownBoard.CellPx;           // 36 pagal tavo GameBoard
+            int label = ownBoard.LabelMargin;     // 25 pagal tavo GameBoard
+            int boardW = label + cell * 10 + 1;
+            int boardH = label + cell * 10 + 1;
+
+            ownBoard.MinimumSize   = new Size(boardW, boardH);
+            enemyBoard.MinimumSize = new Size(boardW, boardH);
+
+            // 2) Užpildyti savo lentelės cell'ę
+            ownBoard.Dock   = DockStyle.Fill;
+            enemyBoard.Dock = DockStyle.Fill;
+
+            // 3) Vienodas tarpas nuo rėmų (neprivaloma, bet padeda vizualiai)
+            ownBoard.Margin   = new Padding(24, 24, 24, 24);
+            enemyBoard.Margin = new Padding(24, 24, 24, 24);
+
+
+            // --- Laivų „preview“ panelė apačioje ---
             shipPanel = new FlowLayoutPanel
             {
-                Location = new Point(30, 480),
-                Size = new Size(450, 100),
+                Dock = DockStyle.Bottom,
+                Height = 110,
                 AutoScroll = true,
                 BorderStyle = BorderStyle.FixedSingle,
-                Visible = false
+                Visible = false,
+                Padding = new Padding(12, 8, 12, 8)
             };
-
             this.Controls.Add(shipPanel);
-            this.Controls.AddRange(new Control[] {
-                l1, txtServer, l2, txtName,
-                btnConnect, btnRandomize, btnPlaceShips, btnReady, btnGameOver,
-                lblStatus, ownBoard, enemyBoard
-            });
+
+            // Kiti mygtukai
+            btnGameOver = new Button { Text = "Game Over", Visible = false };
+            btnGameOver.Click += BtnGameOver_Click;
 
             btnReady.Enabled = false;
+        }   
+
+
+
+
+        private async void BtnVsBot_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                // Jei dar neprisijungęs – prisijunk
+                if (btnConnect.Enabled)
+                {
+                    await net.ConnectAsync(txtServer.Text);
+                    lblStatus.Text = "Connected.";
+                    btnConnect.Enabled = false;
+                }
+
+                // Vietoj "register" čia prašom žaisti su botu
+                var playWithBot = new { type = "playWithBot", payload = new { playerName = txtName.Text } };
+                await net.SendAsync(playWithBot);
+
+                lblStatus.Text = "Kuriama partija su botu...";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Nepavyko pradėti žaidimo su botu: " + ex.Message);
+            }
         }
 
         private async void BtnConnect_Click(object sender, EventArgs e)
@@ -366,29 +466,36 @@ namespace BattleshipClient
                     break;
 
                 case "shotResult":
+                {
                     int x = dto.Payload.GetProperty("x").GetInt32();
                     int y = dto.Payload.GetProperty("y").GetInt32();
-                    string res = dto.Payload.GetProperty("result").GetString();
-                    string shooter = dto.Payload.GetProperty("shooterId").GetString();
+                    string res = dto.Payload.GetProperty("result").GetString(); // miss | hit | whole_ship_down
+                    string targetId = dto.Payload.GetProperty("targetId").GetString();
 
-                    if (shooter == myId)
-                        enemyBoard.SetCell(x, y, res == "hit" ? CellState.Hit : res=="whole_ship_down" ? CellState.Whole_ship_down : CellState.Miss);
-                    else
-                        ownBoard.SetCell(x, y, res == "hit" ? CellState.Hit : res == "whole_ship_down" ? CellState.Whole_ship_down : CellState.Miss);
+                    var board = targetId == myId ? ownBoard : enemyBoard;
 
-                    lblStatus.Text = $"Shot result: {res} at {x},{y}";
+                    if (res == "miss")         board.SetCell(x, y, CellState.Miss);
+                    else if (res == "hit")     board.SetCell(x, y, CellState.Hit);
+                    else if (res == "whole_ship_down")
+                                            board.SetCell(x, y, CellState.Whole_ship_down);  // ← perrašom į tamsiai raudoną
+                    board.Invalidate();
                     break;
+                }
 
                 case "gameOver":
-                    if (dto.Payload.TryGetProperty("winnerId", out var w))
                     {
-                        var winner = w.GetString();
-                        lblStatus.Text = winner == myId ? "You WON! Game over." : "You lost. Game over.";
-                        MessageBox.Show(lblStatus.Text, "Game Over");
-                        btnGameOver.Visible = true;
-                        isMyTurn = false;
+                        var winner = dto.Payload.GetProperty("winnerId").GetString();
+                        MessageBox.Show(this, winner == myId ? "Laimėjai! 🎉" : "Pralaimėjai.", "Game over");
+
+                        enemyBoard.Enabled = false;      // nebeleidžiam šaudyti
+                        btnPlaceShips.Enabled = false;
+                        btnRandomize.Enabled = false;
+                        btnReady.Enabled = false;
+                        btnVsBot.Enabled = true;         // leisk pradėti naują
+                        lblStatus.Text = "Game over.";
+
+                        break;
                     }
-                    break;
 
                 case "error":
                     if (dto.Payload.TryGetProperty("message", out var err))

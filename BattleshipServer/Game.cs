@@ -85,6 +85,7 @@ namespace BattleshipServer
             await Player2.SendAsync(new Models.MessageDto { Type = "startGame", Payload = p2Payload });
 
             Console.WriteLine($"[Game] Started: {Player1.Name} vs {Player2.Name}");
+            Scoreboard.Instance.SetPlayers(Player1.Name, Player2.Name);
         }
 
         public async Task ProcessShot(Guid shooterId, int x, int y)
@@ -131,7 +132,7 @@ namespace BattleshipServer
             {
                 targetBoard[y, x] = 3; // hit
                 hit = true;
-                Scoreboard.Instance.AddHit(shooterId, Player1.Id, Player2.Id);
+                await Scoreboard.Instance.AddHit(shooterId, this);
             }
             else if (targetBoard[y, x] == 0)
             {
@@ -221,7 +222,7 @@ namespace BattleshipServer
 
                 var winner = shooterId.ToString();
                 var goPayload = JsonSerializer.SerializeToElement(new { winnerId = winner });
-                Scoreboard.Instance.AddWin(shooterId, Player1.Id, Player2.Id);
+                await Scoreboard.Instance.AddWin(shooterId, this);
                 await Player1.SendAsync(new Models.MessageDto { Type = "gameOver", Payload = goPayload });
                 await Player2.SendAsync(new Models.MessageDto { Type = "gameOver", Payload = goPayload });
 

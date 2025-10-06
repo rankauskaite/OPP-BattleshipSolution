@@ -20,6 +20,7 @@ namespace BattleshipClient
         private Button btnGameOver; // Naujas mygtukas 
         private Button btnVsBot;
         private Label lblStatus;
+        private Label lblScoreboard;
         private GameBoard ownBoard;
         private GameBoard enemyBoard;
         private FlowLayoutPanel shipPanel;
@@ -36,7 +37,7 @@ namespace BattleshipClient
         private bool placingShips = false;
         private bool placingHorizontal = true;
 
-        public List<ShipDto> Ships { get; set; } = new List<ShipDto>(); 
+        public List<ShipDto> Ships { get; set; } = new List<ShipDto>();
 
 
 
@@ -47,8 +48,8 @@ namespace BattleshipClient
             ownBoard.ShipDropped += OwnBoard_ShipDropped;
             ownBoard.CellClicked += OwnBoard_CellClickedForRemoval;
             btnGameOver.Click += BtnGameOver_Click;
-        } 
-        
+        }
+
         private void InitializeComponents()
         {
             // DPI-aware forma
@@ -85,6 +86,16 @@ namespace BattleshipClient
             // statuso eilutė po top bar'u
             lblStatus = new Label { Text = "Not connected", Dock = DockStyle.Bottom, AutoSize = true, Padding = new Padding(8, 6, 8, 6) };
 
+            // Scoreboard
+            lblScoreboard = new Label
+            {
+                Text = "Scoreboard:",
+                AutoSize = true,
+                Padding = new Padding(8, 6, 8, 6),
+                Anchor = AnchorStyles.Bottom | AnchorStyles.Right
+            };
+            this.Controls.Add(lblScoreboard);
+
             // --- Viršutinė juosta (FlowLayoutPanel) ---
             var topBar = new FlowLayoutPanel
             {
@@ -115,9 +126,9 @@ namespace BattleshipClient
                 Dock = DockStyle.Fill,
                 ColumnCount = 2,
                 RowCount = 1,
-                Padding = new Padding(16),  
+                Padding = new Padding(16),
 
-            }; 
+            };
             boards.RowStyles.Clear();
             boards.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             boards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
@@ -125,9 +136,9 @@ namespace BattleshipClient
 
             // Lentos turi plėstis su langu
 
-            boards.Controls.Add(ownBoard,  0, 0);
+            boards.Controls.Add(ownBoard, 0, 0);
             boards.Controls.Add(enemyBoard, 1, 0);
-            this.Controls.Add(boards); 
+            this.Controls.Add(boards);
 
 
             // --- Lentos (po ownBoard/enemyBoard = new GameBoard() ir event'ų prisirišimo) ---
@@ -138,15 +149,15 @@ namespace BattleshipClient
             int boardW = label + cell * 10 + 1;
             int boardH = label + cell * 10 + 1;
 
-            ownBoard.MinimumSize   = new Size(boardW, boardH);
+            ownBoard.MinimumSize = new Size(boardW, boardH);
             enemyBoard.MinimumSize = new Size(boardW, boardH);
 
             // 2) Užpildyti savo lentelės cell'ę
-            ownBoard.Dock   = DockStyle.Fill;
+            ownBoard.Dock = DockStyle.Fill;
             enemyBoard.Dock = DockStyle.Fill;
 
             // 3) Vienodas tarpas nuo rėmų (neprivaloma, bet padeda vizualiai)
-            ownBoard.Margin   = new Padding(24, 24, 24, 24);
+            ownBoard.Margin = new Padding(24, 24, 24, 24);
             enemyBoard.Margin = new Padding(24, 24, 24, 24);
 
 
@@ -167,7 +178,7 @@ namespace BattleshipClient
             btnGameOver.Click += BtnGameOver_Click;
 
             btnReady.Enabled = false;
-        }   
+        }
 
 
 
@@ -466,21 +477,21 @@ namespace BattleshipClient
                     break;
 
                 case "shotResult":
-                {
-                    int x = dto.Payload.GetProperty("x").GetInt32();
-                    int y = dto.Payload.GetProperty("y").GetInt32();
-                    string res = dto.Payload.GetProperty("result").GetString(); // miss | hit | whole_ship_down
-                    string targetId = dto.Payload.GetProperty("targetId").GetString();
+                    {
+                        int x = dto.Payload.GetProperty("x").GetInt32();
+                        int y = dto.Payload.GetProperty("y").GetInt32();
+                        string res = dto.Payload.GetProperty("result").GetString(); // miss | hit | whole_ship_down
+                        string targetId = dto.Payload.GetProperty("targetId").GetString();
 
-                    var board = targetId == myId ? ownBoard : enemyBoard;
+                        var board = targetId == myId ? ownBoard : enemyBoard;
 
-                    if (res == "miss")         board.SetCell(x, y, CellState.Miss);
-                    else if (res == "hit")     board.SetCell(x, y, CellState.Hit);
-                    else if (res == "whole_ship_down")
-                                            board.SetCell(x, y, CellState.Whole_ship_down);  // ← perrašom į tamsiai raudoną
-                    board.Invalidate();
-                    break;
-                }
+                        if (res == "miss") board.SetCell(x, y, CellState.Miss);
+                        else if (res == "hit") board.SetCell(x, y, CellState.Hit);
+                        else if (res == "whole_ship_down")
+                            board.SetCell(x, y, CellState.Whole_ship_down);  // ← perrašom į tamsiai raudoną
+                        board.Invalidate();
+                        break;
+                    }
 
                 case "gameOver":
                     {
@@ -500,6 +511,10 @@ namespace BattleshipClient
                 case "error":
                     if (dto.Payload.TryGetProperty("message", out var err))
                         MessageBox.Show(err.GetString(), "Error");
+                    break;
+
+                case "scoreUpdate":
+                    HandleScoreUpdate(dto.Payload);
                     break;
             }
         }
@@ -528,6 +543,18 @@ namespace BattleshipClient
             }
 
             btnGameOver.Visible = false;
+        }
+
+        private void HandleScoreUpdate(JsonElement payload)
+        {
+            string p1 = payload.GetProperty("p1").GetString();
+            string p2 = payload.GetProperty("p2").GetString();
+            int hits1 = payload.GetProperty("hits1").GetInt32();
+            int hits2 = payload.GetProperty("hits2").GetInt32();
+            int wins1 = payload.GetProperty("wins1").GetInt32();
+            int wins2 = payload.GetProperty("wins2").GetInt32();
+
+            lblScoreboard.Text = $"Scoreboard: \n {p1}: {hits1} hits, {wins1} wins \n {p2}: {hits2} hits, {wins2} wins";
         }
 
         private void InitializeComponent() { }

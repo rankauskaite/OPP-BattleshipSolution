@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using BattleshipClient.Models;
+using BattleshipClient.Services;
 
 namespace BattleshipClient
 {
@@ -34,6 +35,9 @@ namespace BattleshipClient
         // drag & drop state
         private bool placingShips = false;
         private bool placingHorizontal = true;
+
+        // services
+        private ShipPlacementService ShipPlacementService = new ShipPlacementService();
 
         public List<ShipDto> Ships { get; set; } = new List<ShipDto>();
 
@@ -146,13 +150,13 @@ namespace BattleshipClient
             int x = cell.X;
             int y = cell.Y;
 
-            if (!CanPlaceShip(x, y, ship.Length, ship.Horizontal))
+            if(!ShipPlacementService.CanPlaceShip(ownBoard, x, y, ship.Length, ship.Horizontal))
             {
                 MessageBox.Show("Invalid placement here.");
                 return;
             }
 
-            PlaceShip(x, y, ship.Length, ship.Horizontal);
+            ShipPlacementService.PlaceShip(ownBoard, x, y, ship.Length, ship.Horizontal);
 
             myShips.Add(new ShipDto
             {
@@ -215,30 +219,6 @@ namespace BattleshipClient
             }
         }
 
-        private bool CanPlaceShip(int x, int y, int len, bool horiz)
-        {
-            if (horiz && x + len > GameBoard.Size) return false;
-            if (!horiz && y + len > GameBoard.Size) return false;
-
-            for (int i = 0; i < len; i++)
-            {
-                int cx = x + (horiz ? i : 0);
-                int cy = y + (horiz ? 0 : i);
-                if (ownBoard.GetCell(cx, cy) != CellState.Empty) return false;
-            }
-            return true;
-        }
-
-        public void PlaceShip(int x, int y, int len, bool horiz)
-        {
-            for (int i = 0; i < len; i++)
-            {
-                int cx = x + (horiz ? i : 0);
-                int cy = y + (horiz ? 0 : i);
-                ownBoard.SetCell(cx, cy, CellState.Ship);
-            }
-        }
-
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
             if (keyData == Keys.R && placingShips)
@@ -267,7 +247,20 @@ namespace BattleshipClient
             await net.SendAsync(shot);
         }
 
-        private void BtnRandomize_Click(object sender, EventArgs e) => RandomizeShips();
+        private void BtnRandomize_Click(object sender, EventArgs e)
+        {
+            myShips.Clear();
+            (myShips, CellState[,] temp) = ShipPlacementService.RandomizeShips();
+            ownBoard.Ships = myShips;
+            ownBoard.Invalidate();
+            btnReady.Enabled = myShips.Count == 10;
+
+            for (int r = 0; r < GameBoard.Size; r++)
+                for (int c = 0; c < GameBoard.Size; c++)
+                    ownBoard.SetCell(c, r, temp[r, c]);
+
+            lblStatus.Text = $"Randomized {myShips.Count} ships.";
+        }
 
         private async void BtnReady_Click(object sender, EventArgs e)
         {
@@ -284,54 +277,6 @@ namespace BattleshipClient
             btnReady.Enabled = false;
             btnPlaceShips.Enabled = false;
             btnRandomize.Enabled = false;
-        }
-
-        private void RandomizeShips()
-        {
-            var lens = new int[] { 4, 3, 3, 2, 2, 2, 1, 1, 1, 1 };
-            var rnd = new Random();
-            myShips.Clear();
-            var temp = new CellState[GameBoard.Size, GameBoard.Size];
-
-            foreach (var len in lens)
-            {
-                bool placed = false;
-                int tries = 0;
-                while (!placed && tries < 200)
-                {
-                    tries++;
-                    bool horiz = rnd.Next(2) == 0;
-                    int x = rnd.Next(0, GameBoard.Size - (horiz ? len - 1 : 0));
-                    int y = rnd.Next(0, GameBoard.Size - (horiz ? 0 : len - 1));
-                    bool ok = true;
-                    for (int i = 0; i < len; i++)
-                    {
-                        int cx = x + (horiz ? i : 0);
-                        int cy = y + (horiz ? 0 : i);
-                        if (temp[cy, cx] != CellState.Empty) { ok = false; break; }
-                    }
-                    if (ok)
-                    {
-                        for (int i = 0; i < len; i++)
-                        {
-                            int cx = x + (horiz ? i : 0);
-                            int cy = y + (horiz ? 0 : i);
-                            temp[cy, cx] = CellState.Ship;
-                        }
-                        myShips.Add(new ShipDto { x = x, y = y, len = len, dir = horiz ? "H" : "V" });
-                        ownBoard.Ships = myShips;
-                        ownBoard.Invalidate();
-                        btnReady.Enabled = myShips.Count == 10;
-                        placed = true;
-                    }
-                }
-            }
-
-            for (int r = 0; r < GameBoard.Size; r++)
-                for (int c = 0; c < GameBoard.Size; c++)
-                    ownBoard.SetCell(c, r, temp[r, c]);
-
-            lblStatus.Text = $"Randomized {myShips.Count} ships.";
         }
 
         private void Net_OnMessageReceived(MessageDto dto)

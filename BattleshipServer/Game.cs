@@ -1,4 +1,4 @@
-﻿﻿using BattleshipServer.Data;
+﻿﻿﻿using BattleshipServer.Data;
 using BattleshipServer.Domain;
 using BattleshipServer.Models;
 using System;
@@ -19,6 +19,9 @@ namespace BattleshipServer
         // Boto strategijai / diagnostikai
         public (int x, int y) LastShot { get; private set; } = (-1, -1);
         public string LastResult { get; private set; } = "miss"; // "miss" | "hit" | "whole_ship_down"
+
+        // Nauja: visi paskutinio nuskendusio laivo langeliai (jei buvo)
+        public IReadOnlyList<Coordinate> LastSunkCells { get; private set; } = Array.Empty<Coordinate>();
 
         private readonly GameManager _manager;
         private readonly Database _db;
@@ -142,6 +145,13 @@ namespace BattleshipServer
                     await Player1.Conn.SendAsync(new MessageDto { Type = "shotResult", Payload = upd });
                     await Player2.Conn.SendAsync(new MessageDto { Type = "shotResult", Payload = upd });
                 }
+
+                // atnaujinam diagnostiką: visi nuskendusio laivo taškai
+                LastSunkCells = outcome.SunkCells;
+            }
+            else
+            {
+                LastSunkCells = Array.Empty<Coordinate>();
             }
 
             // užpildom diagnostiką

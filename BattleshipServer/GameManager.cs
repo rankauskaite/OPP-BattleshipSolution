@@ -1,11 +1,12 @@
-﻿using System;
+﻿﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using BattleshipServer.Data;
-using BattleshipServer.Models;      // MessageDto, ShipDto, BoardKnowledge (pagal tavo failą)
-using BattleshipServer.Npc;         // NpcController, INpcShotStrategy, SmartHuntTargetStrategy 
+using BattleshipServer.Models;      // MessageDto, ShipDto, BoardKnowledge
+using BattleshipServer.Npc;         // NpcController, INpcShotStrategy, RuleBasedSelector, ShotStrategyFactory
 using BattleshipServer.Domain;
 
 namespace BattleshipServer
@@ -166,7 +167,9 @@ namespace BattleshipServer
 
             // NPC komponentai šiam žaidimui
             _botKnowledge[game] = new BoardKnowledge(10, 10);
-            _botController[game] = new NpcController(new HumanLikeFrontierHeatStrategy());
+
+            // Dinaminis perjungimas: controller + selector + pradinė strategija per fabriką
+            _botController[game] = new NpcController(new RuleBasedSelector(), ShotStrategyFactory.Create("human-like"));
 
             var info = JsonSerializer.SerializeToElement(new { message = $"Sukurta partija su botu: {human.Name} vs NPC" });
             await human.SendAsync(new MessageDto { Type = "info", Payload = info });
@@ -227,14 +230,14 @@ namespace BattleshipServer
             {
                 // saugiklis – jei dėl kokios nors priežasties neinicijuota
                 know = new BoardKnowledge(10, 10);
-                ctl = new NpcController(new HumanLikeFrontierHeatStrategy());
+                ctl  = new NpcController(new RuleBasedSelector(), ShotStrategyFactory.Create("human-like"));
                 _botKnowledge[g] = know;
                 _botController[g] = ctl;
             }
 
             while (!g.IsOver && g.CurrentPlayerId == bot.Id)
             {
-                // 1) NPC pasirenka taikinį pagal žinias
+                // 1) NPC pasirenka taikinį pagal žinias (čia gali įvykti STRATEGIJOS PASIKEITIMAS)
                 var (tx, ty) = ctl.Decide(know);
 
                 // 2) Paleidžiam šūvį (Game atsiųs shotResult ir, jei Sunk, papildomas "whole_ship_down")
@@ -248,9 +251,18 @@ namespace BattleshipServer
                     case "hit":
                         know.MarkHit(tx, ty);
                         break;
+
                     case "whole_ship_down":
-                        know.MarkSunk(tx, ty); // jei nori – gali atnaujinti ir visus Sunk langelius, jei juos gausi
+                        // pažymim pagrindinį tašką
+                        know.MarkSunk(tx, ty);
+                        // ir VISUS Sunk langelius (nauja)
+                        if (g.LastSunkCells != null)
+                        {
+                            foreach (var c in g.LastSunkCells)
+                                know.MarkSunk(c.X, c.Y);
+                        }
                         break;
+
                     default:
                         know.MarkMiss(tx, ty);
                         break;

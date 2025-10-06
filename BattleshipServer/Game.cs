@@ -131,6 +131,7 @@ namespace BattleshipServer
             {
                 targetBoard[y, x] = 3; // hit
                 hit = true;
+                Scoreboard.Instance.AddHit(shooterId, Player1.Id, Player2.Id);
             }
             else if (targetBoard[y, x] == 0)
             {
@@ -220,6 +221,7 @@ namespace BattleshipServer
 
                 var winner = shooterId.ToString();
                 var goPayload = JsonSerializer.SerializeToElement(new { winnerId = winner });
+                Scoreboard.Instance.AddWin(shooterId, Player1.Id, Player2.Id);
                 await Player1.SendAsync(new Models.MessageDto { Type = "gameOver", Payload = goPayload });
                 await Player2.SendAsync(new Models.MessageDto { Type = "gameOver", Payload = goPayload });
 

@@ -1,4 +1,5 @@
 ﻿﻿using BattleshipServer.Data;
+using BattleshipServer.Domain;
 using BattleshipServer.Models;
 using System;
 using System.Collections.Generic;
@@ -9,62 +10,51 @@ namespace BattleshipServer
 {
     public class Game
     {
-        public PlayerConnection Player1 { get; }
-        public PlayerConnection Player2 { get; }
-        public Guid CurrentPlayerId { get; private set; }
+        public Player Player1 { get; }
+        public Player Player2 { get; }
 
-        // Nauja: paskutinio šūvio info (naudojama tik servero botei)
+        public Guid CurrentPlayerId { get; private set; }
+        public bool IsOver { get; private set; } = false;
+
+        // Boto strategijai / diagnostikai
         public (int x, int y) LastShot { get; private set; } = (-1, -1);
         public string LastResult { get; private set; } = "miss"; // "miss" | "hit" | "whole_ship_down"
 
-        private readonly int[,] _board1 = new int[10, 10];
-        private readonly int[,] _board2 = new int[10, 10];
-        private readonly List<Ship> _ships1 = new();
-        private readonly List<Ship> _ships2 = new();
         private readonly GameManager _manager;
-        private readonly Database _db; 
-        public bool IsOver { get; private set; } = false;
+        private readonly Database _db;
 
+        public bool IsReady => _p1Placed && _p2Placed;
 
-        public bool IsReady => _ships1.Count > 0 && _ships2.Count > 0;
+        private bool _p1Placed;
+        private bool _p2Placed;
 
         public Game(PlayerConnection p1, PlayerConnection p2, GameManager manager, Database db)
         {
-            Player1 = p1;
-            Player2 = p2;
+            Player1 = new Player(p1);
+            Player2 = new Player(p2);
             _manager = manager;
             _db = db;
         }
 
-        public void PlaceShips(Guid playerId, List<ShipDto> shipsDto)
+        public void PlaceShips(Guid playerId, List<ShipDto> ships)
         {
-            var board = playerId == Player1.Id ? _board1 : _board2;
-            var ships = playerId == Player1.Id ? _ships1 : _ships2;
-
-            // reset board & ships
-            Array.Clear(board, 0, board.Length);
-            ships.Clear();
-
-            foreach (var sd in shipsDto)
+            if (playerId == Player1.Id)
             {
-                var ship = new Ship(sd.X, sd.Y, sd.Len, sd.Dir?.ToUpper() == "H");
-                ships.Add(ship);
-                for (int i = 0; i < sd.Len; i++)
-                {
-                    int cx = sd.X + (ship.Horizontal ? i : 0);
-                    int cy = sd.Y + (ship.Horizontal ? 0 : i);
-                    if (cx >= 0 && cx < 10 && cy >= 0 && cy < 10)
-                        board[cy, cx] = 1;
-                }
+                Player1.Board.PlaceShips(ships);
+                _p1Placed = true;
+                _db.SaveMap(Player1.Id.ToString(), JsonSerializer.Serialize(ships));
             }
-
-            var mapJson = JsonSerializer.Serialize(shipsDto);
-            _db.SaveMap(playerId.ToString(), mapJson);
+            else
+            {
+                Player2.Board.PlaceShips(ships);
+                _p2Placed = true;
+                _db.SaveMap(Player2.Id.ToString(), JsonSerializer.Serialize(ships));
+            }
         }
 
         public async Task StartGame()
         {
-            CurrentPlayerId = Player1.Id; // p1 starts
+            CurrentPlayerId = Player1.Id;
 
             var p1Payload = JsonSerializer.SerializeToElement(new
             {
@@ -81,17 +71,18 @@ namespace BattleshipServer
                 current = CurrentPlayerId.ToString()
             });
 
-            await Player1.SendAsync(new Models.MessageDto { Type = "startGame", Payload = p1Payload });
-            await Player2.SendAsync(new Models.MessageDto { Type = "startGame", Payload = p2Payload });
+            await Player1.Conn.SendAsync(new MessageDto { Type = "startGame", Payload = p1Payload });
+            await Player2.Conn.SendAsync(new MessageDto { Type = "startGame", Payload = p2Payload });
 
             Console.WriteLine($"[Game] Started: {Player1.Name} vs {Player2.Name}");
         }
 
         public async Task ProcessShot(Guid shooterId, int x, int y)
-        { 
+        {
             if (IsOver)
             {
-                await GetPlayer(shooterId).SendAsync(new Models.MessageDto {
+                await GetConn(shooterId).SendAsync(new MessageDto
+                {
                     Type = "error",
                     Payload = JsonDocument.Parse("{\"message\":\"Game already finished\"}").RootElement
                 });
@@ -100,7 +91,7 @@ namespace BattleshipServer
 
             if (shooterId != CurrentPlayerId)
             {
-                await GetPlayer(shooterId).SendAsync(new Models.MessageDto
+                await GetConn(shooterId).SendAsync(new MessageDto
                 {
                     Type = "error",
                     Payload = JsonDocument.Parse("{\"message\":\"Not your turn\"}").RootElement
@@ -108,95 +99,20 @@ namespace BattleshipServer
                 return;
             }
 
-            var shooter = GetPlayer(shooterId);
-            var target = GetOpponent(shooterId);
-            var targetBoard = target == Player1 ? _board1 : _board2;
-            var targetShips = target == Player1 ? _ships1 : _ships2;
+            var shooter = (shooterId == Player1.Id) ? Player1 : Player2;
+            var target  = (shooterId == Player1.Id) ? Player2 : Player1;
 
-            bool hit = false;
-            bool gameOver = false;
-            bool wholeDownTriggered = false;
+            // pritaikom šūvį
+            var outcome = target.Board.ApplyShot(x, y);
 
-            if (x < 0 || x >= 10 || y < 0 || y >= 10)
+            // transliuojam pagrindinį rezultato langelį
+            string resString = outcome.Kind switch
             {
-                await shooter.SendAsync(new Models.MessageDto
-                {
-                    Type = "error",
-                    Payload = JsonDocument.Parse("{\"message\":\"Invalid coords\"}").RootElement
-                });
-                return;
-            }
-
-            if (targetBoard[y, x] == 1)
-            {
-                targetBoard[y, x] = 3; // hit
-                hit = true;
-            }
-            else if (targetBoard[y, x] == 0)
-            {
-                targetBoard[y, x] = 2; // miss
-                hit = false;
-            }
-            else
-            {
-                await shooter.SendAsync(new Models.MessageDto
-                {
-                    Type = "error",
-                    Payload = JsonDocument.Parse("{\"message\":\"Cell already shot\"}").RootElement
-                });
-                return;
-            }
-
-            // Ship sink check
-            // --- Update ship sink status and check overall survival (REPLACED) ---
-            bool anyLeft = false;
-            bool wholeDown = false;
-
-            foreach (var s in targetShips)
-            {
-                bool sunkNow = s.IsSunk(targetBoard);
-
-                if (!sunkNow)
-                {
-                    anyLeft = true; // dar yra bent vienas gyvas laivas
-                }
-                else if (!s.MarkedSunk) // tik pirmą kartą, kai tikrai nuskendo
-                {
-                    s.setAsSunk(targetBoard);
-                    bool containsShot = s.Horizontal
-                        ? (y == s.Y && x >= s.X && x < s.X + s.Len)
-                        : (x == s.X && y >= s.Y && y < s.Y + s.Len);
-                    if (containsShot)
-                        wholeDownTriggered = true;
-
-                    // Ištransliuojam "whole_ship_down" tik per to laivo langelius
-                    for (int i = 0; i < s.Len; i++)
-                    {
-                        int cx1 = s.X + (s.Horizontal ? i : 0);
-                        int cy1 = s.Y + (s.Horizontal ? 0 : i);
-                        if (cx1 < 0 || cx1 >= 10 || cy1 < 0 || cy1 >= 10) break;
-
-                        var updateBoard = JsonSerializer.SerializeToElement(new
-                        {
-                            x = cx1,
-                            y = cy1,
-                            result = "whole_ship_down",
-                            shooterId = shooterId.ToString(),
-                            targetId = target.Id.ToString()
-                        });
-
-                        await Player1.SendAsync(new MessageDto { Type = "shotResult", Payload = updateBoard });
-                        await Player2.SendAsync(new MessageDto { Type = "shotResult", Payload = updateBoard });
-                    }
-                }
-            }
-
-            if (!anyLeft) gameOver = true;
-
-
-            // bendras pranešimas apie konkretų langelį
-            var resString = hit && !wholeDownTriggered ? "hit" :
-                            hit &&  wholeDownTriggered ? "whole_ship_down" : "miss";
+                ShotKind.Miss => "miss",
+                ShotKind.Hit  => "hit",
+                ShotKind.Sunk => "whole_ship_down",
+                _ => "miss"
+            };
 
             var shotResult = JsonSerializer.SerializeToElement(new
             {
@@ -207,84 +123,57 @@ namespace BattleshipServer
                 targetId = target.Id.ToString()
             });
 
-            await Player1.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult });
-            await Player2.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult });
+            await Player1.Conn.SendAsync(new MessageDto { Type = "shotResult", Payload = shotResult });
+            await Player2.Conn.SendAsync(new MessageDto { Type = "shotResult", Payload = shotResult });
 
-            // --- nauja: atnaujinam paskutinio šūvio informaciją ---
+            // jei nuskendo – papildomai „whole_ship_down“ visiems laivo langeliams
+            if (outcome.Kind == ShotKind.Sunk && outcome.SunkCells != null)
+            {
+                foreach (var (sx, sy) in outcome.SunkCells)
+                {
+                    var upd = JsonSerializer.SerializeToElement(new
+                    {
+                        x = sx,
+                        y = sy,
+                        result = "whole_ship_down",
+                        shooterId = shooterId.ToString(),
+                        targetId = target.Id.ToString()
+                    });
+                    await Player1.Conn.SendAsync(new MessageDto { Type = "shotResult", Payload = upd });
+                    await Player2.Conn.SendAsync(new MessageDto { Type = "shotResult", Payload = upd });
+                }
+            }
+
+            // užpildom diagnostiką
             LastShot = (x, y);
             LastResult = resString;
 
+            // pabaiga?
+            bool gameOver = target.Board.AllShipsSunk();
             if (gameOver)
             {
-                IsOver = true; // ← svarbu: po šito nebeleisime ėjimų
-
+                IsOver = true;
                 var winner = shooterId.ToString();
-                var goPayload = JsonSerializer.SerializeToElement(new { winnerId = winner });
-                await Player1.SendAsync(new Models.MessageDto { Type = "gameOver", Payload = goPayload });
-                await Player2.SendAsync(new Models.MessageDto { Type = "gameOver", Payload = goPayload });
+                var go = JsonSerializer.SerializeToElement(new { winnerId = winner });
+
+                await Player1.Conn.SendAsync(new MessageDto { Type = "gameOver", Payload = go });
+                await Player2.Conn.SendAsync(new MessageDto { Type = "gameOver", Payload = go });
 
                 _manager.GameEnded(this);
-                _db.SaveGame(Player1.Name ?? Player1.Id.ToString(), Player2.Name ?? Player2.Id.ToString(), shooterId.ToString());
+                _db.SaveGame(Player1.Name, Player2.Name, winner);
                 Console.WriteLine($"[Game] Game over. Winner: {winner}");
-                return; // ← daugiau nieko nebedarom
+                return;
             }
-            else
-            {
-                // ėjimą perjungiam TIK kai prameta
-                if (!hit)
-                    CurrentPlayerId = target.Id;
 
-                var turnPayload = JsonSerializer.SerializeToElement(new { current = CurrentPlayerId.ToString() });
-                await Player1.SendAsync(new Models.MessageDto { Type = "turn", Payload = turnPayload });
-                await Player2.SendAsync(new Models.MessageDto { Type = "turn", Payload = turnPayload });
-            }
+            // ėjimo keitimas – tik kai Miss (taip buvo ir anksčiau)
+            if (outcome.Kind == ShotKind.Miss)
+                CurrentPlayerId = target.Id;
+
+            var turnPayload = JsonSerializer.SerializeToElement(new { current = CurrentPlayerId.ToString() });
+            await Player1.Conn.SendAsync(new MessageDto { Type = "turn", Payload = turnPayload });
+            await Player2.Conn.SendAsync(new MessageDto { Type = "turn", Payload = turnPayload });
         }
 
-        private PlayerConnection GetPlayer(Guid id) => id == Player1.Id ? Player1 : Player2;
-        private PlayerConnection GetOpponent(Guid id) => id == Player1.Id ? Player2 : Player1;
-    }
-
-    internal class Ship
-    {
-        public int X { get; }
-        public int Y { get; }
-        public int Len { get; }
-        public bool Horizontal { get; }
-        public bool MarkedSunk { get; private set; }  // <-- nauja
-
-        public Ship(int x, int y, int len, bool horizontal)
-        {
-            X = x; Y = y; Len = len; Horizontal = horizontal;
-            MarkedSunk = false;
-        }
-
-        public bool IsSunk(int[,] board)
-        {
-            for (int i = 0; i < Len; i++)
-            {
-                int cx = X + (Horizontal ? i : 0);
-                int cy = Y + (Horizontal ? 0 : i);
-                if (cx < 0 || cx >= 10 || cy < 0 || cy >= 10) return false;
-
-                // BUVO: if (board[cy, cx] != 3) return false;
-                // DABAR: leidžiam ir 3 (hit), ir 4 (sunk)
-                var cell = board[cy, cx];
-                if (cell != 3 && cell != 4) return false;
-            }
-            return true;
-        }
-
-
-        public void setAsSunk(int[,] board)
-        {
-            for (int i = 0; i < Len; i++)
-            {
-                int cx = X + (Horizontal ? i : 0);
-                int cy = Y + (Horizontal ? 0 : i);
-                if (cx < 0 || cx >= 10 || cy < 0 || cy >= 10) return;
-                board[cy, cx] = 4;
-            }
-            MarkedSunk = true;  // <-- užfiksuojam
-        }
+        private PlayerConnection GetConn(Guid id) => id == Player1.Id ? Player1.Conn : Player2.Conn;
     }
 }

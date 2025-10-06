@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
-using BattleshipServer.Models;
 using BattleshipServer.Data;
+using BattleshipServer.Models;      // MessageDto, ShipDto, BoardKnowledge (pagal tavo failą)
+using BattleshipServer.Npc;         // NpcController, INpcShotStrategy, SmartHuntTargetStrategy 
+using BattleshipServer.Domain;
 
 namespace BattleshipServer
 {
@@ -16,11 +17,12 @@ namespace BattleshipServer
         private readonly List<Game> _games = new();
         private readonly Database _db = new Database("battleship.db");
 
-        // Bot jungtis per žaidimą
+        // Bot'o "jungtis" per žaidimą
         private readonly ConcurrentDictionary<Game, PlayerConnection> _gameBots = new();
 
-        // Bot strategija per žaidimą
-        private readonly ConcurrentDictionary<Game, SmartHuntTargetStrategy> _smartByGame = new();
+        // NPC komponentai per žaidimą
+        private readonly ConcurrentDictionary<Game, BoardKnowledge> _botKnowledge = new();
+        private readonly ConcurrentDictionary<Game, NpcController>  _botController = new();
 
         public async Task HandleMessageAsync(PlayerConnection player, MessageDto dto)
         {
@@ -38,6 +40,7 @@ namespace BattleshipServer
                         Type = "register",
                         Payload = JsonDocument.Parse("{\"message\":\"registered\"}").RootElement
                     });
+
                     TryPairPlayers();
                     break;
                 }
@@ -55,6 +58,7 @@ namespace BattleshipServer
                 {
                     if (_playerToGame.TryGetValue(player.Id, out var gReady))
                     {
+                        // surenkame laivus iš payload
                         var ships = new List<ShipDto>();
                         if (dto.Payload.TryGetProperty("ships", out var shipsElem))
                         {
@@ -77,6 +81,7 @@ namespace BattleshipServer
                         {
                             await gReady.StartGame();
 
+                            // jei pirmas ėjimas botui – pajudinam iškart
                             if (_gameBots.TryGetValue(gReady, out var bot) && gReady.CurrentPlayerId == bot.Id)
                                 await TryBotChainAsync(gReady, bot);
                         }
@@ -94,15 +99,14 @@ namespace BattleshipServer
                     {
                         int x = xe.GetInt32();
                         int y = ye.GetInt32();
+
                         if (_playerToGame.TryGetValue(player.Id, out var gShot))
                         {
-                            await gShot.ProcessShot(player.Id, x, y); 
-                            
-                            if (gShot.IsOver) return;
+                            await gShot.ProcessShot(player.Id, x, y);
 
-
-                            if (_gameBots.TryGetValue(gShot, out var bot) && gShot.CurrentPlayerId == bot.Id)
-                                    await TryBotChainAsync(gShot, bot);
+                            // po žaidėjo ėjimo – jei botui eilė, paleidžiam jo grandinę
+                            if (!gShot.IsOver && _gameBots.TryGetValue(gShot, out var bot) && gShot.CurrentPlayerId == bot.Id)
+                                await TryBotChainAsync(gShot, bot);
                         }
                     }
                     break;
@@ -136,15 +140,18 @@ namespace BattleshipServer
 
         public void GameEnded(Game g)
         {
-            _playerToGame.TryRemove(g.Player1.Id, out _);
-            _playerToGame.TryRemove(g.Player2.Id, out _);
+            _playerToGame.TryRemove(g.Player1.Conn.Id, out _);
+            _playerToGame.TryRemove(g.Player2.Conn.Id, out _);
             _games.Remove(g);
+
             _gameBots.TryRemove(g, out _);
-            _smartByGame.TryRemove(g, out _);
+            _botKnowledge.TryRemove(g, out _);
+            _botController.TryRemove(g, out _);
+
             Console.WriteLine("[Manager] Game removed.");
         }
 
-        // ===== BOT režimas =====
+        // ================= BOT režimas =================
 
         private async Task CreateBotGameAsync(PlayerConnection human)
         {
@@ -157,15 +164,19 @@ namespace BattleshipServer
             _playerToGame[bot.Id] = game;
             _gameBots[game] = bot;
 
-            _smartByGame[game] = new SmartHuntTargetStrategy(10, 10);
+            // NPC komponentai šiam žaidimui
+            _botKnowledge[game] = new BoardKnowledge(10, 10);
+            _botController[game] = new NpcController(new HumanLikeFrontierHeatStrategy());
 
             var info = JsonSerializer.SerializeToElement(new { message = $"Sukurta partija su botu: {human.Name} vs NPC" });
             await human.SendAsync(new MessageDto { Type = "info", Payload = info });
 
+            // Bot'ui automatiškai išdėstom laivus
             var botShips = GenerateRandomShips();
             game.PlaceShips(bot.Id, botShips);
         }
 
+        /// <summary> Paprastas atsitiktinis 10 laivų rinkinys (4,3,3,2,2,2,1,1,1,1) į 10x10, be sudėtingų taisyklių. </summary>
         private List<ShipDto> GenerateRandomShips()
         {
             var rnd = new Random();
@@ -189,6 +200,7 @@ namespace BattleshipServer
                         int cy = y + (horiz ? 0 : i);
                         if (grid[cy, cx] != 0) ok = false;
                     }
+
                     if (!ok) continue;
 
                     for (int i = 0; i < len; i++)
@@ -206,173 +218,47 @@ namespace BattleshipServer
             return result;
         }
 
-        /// <summary> Botas šaudo kol pataiko; Miss atiduoda ėjimą žmogui. Rezultatą imam iš g.LastResult. </summary>
+        /// <summary>
+        /// Botas šaudo kol prameta. Strategija: NpcController + BoardKnowledge.
+        /// </summary>
         private async Task TryBotChainAsync(Game g, PlayerConnection bot)
         {
-            if (!_smartByGame.TryGetValue(g, out var strat))
+            if (!_botController.TryGetValue(g, out var ctl) || !_botKnowledge.TryGetValue(g, out var know))
             {
-                strat = new SmartHuntTargetStrategy(10, 10);
-                _smartByGame[g] = strat;
+                // saugiklis – jei dėl kokios nors priežasties neinicijuota
+                know = new BoardKnowledge(10, 10);
+                ctl = new NpcController(new HumanLikeFrontierHeatStrategy());
+                _botKnowledge[g] = know;
+                _botController[g] = ctl;
             }
 
             while (!g.IsOver && g.CurrentPlayerId == bot.Id)
             {
-                var (tx, ty) = strat.NextShot();
+                // 1) NPC pasirenka taikinį pagal žinias
+                var (tx, ty) = ctl.Decide(know);
 
-                await g.ProcessShot(bot.Id, tx, ty); 
+                // 2) Paleidžiam šūvį (Game atsiųs shotResult ir, jei Sunk, papildomas "whole_ship_down")
+                await g.ProcessShot(bot.Id, tx, ty);
 
-                 if (g.IsOver) break;
+                if (g.IsOver) break;
 
-                // žinome tikslų rezultatą
-                var outcome = g.LastResult switch
+                // 3) Atnaujinam žinias iš paskutinio rezultato
+                switch (g.LastResult)
                 {
-                    "hit"               => ShotOutcome.Hit,
-                    "whole_ship_down"   => ShotOutcome.Sunk,
-                    _                   => ShotOutcome.Miss
-                };
-
-                strat.ObserveResult((tx, ty), outcome);
-
-                await Task.Delay(250); // mažas pauzės efektas
-            }
-        }
-    }
-
-    // ===========================================================
-    //  PROTINGA NPC STRATEGIJA: Hunt → Target → Linija (vidinė)
-    // ===========================================================
-    public enum ShotOutcome { Miss, Hit, Sunk }
-
-    public sealed class SmartHuntTargetStrategy
-    {
-        private readonly int _w, _h;
-        private readonly HashSet<(int x,int y)> _shot = new();
-        private readonly HashSet<(int x,int y)> _hits = new();
-
-        private readonly Queue<(int x,int y)> _frontier = new();
-        private (int x,int y)? _seedHit = null;
-        private (int dx,int dy)? _lineDir = null;
-        private bool _reverseTried = false;
-
-        public SmartHuntTargetStrategy(int width, int height)
-        {
-            _w = width; _h = height;
-        }
-
-        public (int x,int y) NextShot()
-        {
-            // 1) Linija – tęsti kryptimi
-            if (_lineDir is { } dir && _seedHit.HasValue)
-            {
-                var seed = _seedHit.Value;
-                var ordered = OrderedHitsAlongLine(seed, dir);
-                var tail = ordered.Last();
-                var nx = tail.x + dir.dx;
-                var ny = tail.y + dir.dy;
-                if (In(nx,ny) && !_shot.Contains((nx,ny))) return (nx,ny);
-
-                if (!_reverseTried)
-                {
-                    _reverseTried = true;
-                    var rev = (-dir.dx, -dir.dy);
-                    var head = ordered.First();
-                    nx = head.x + rev.Item1; ny = head.y + rev.Item2;
-                    if (In(nx,ny) && !_shot.Contains((nx,ny))) return (nx,ny);
+                    case "hit":
+                        know.MarkHit(tx, ty);
+                        break;
+                    case "whole_ship_down":
+                        know.MarkSunk(tx, ty); // jei nori – gali atnaujinti ir visus Sunk langelius, jei juos gausi
+                        break;
+                    default:
+                        know.MarkMiss(tx, ty);
+                        break;
                 }
+
+                // 4) nedidelė pauzė, kad matytųsi animacija
+                await Task.Delay(250);
             }
-
-            // 2) Target – kol turim "frontier"
-            while (_frontier.Count > 0)
-            {
-                var c = _frontier.Dequeue();
-                if (In(c.x,c.y) && !_shot.Contains(c)) return c;
-            }
-
-            // 3) Hunt – checkerboard, paskui fallback
-            var rnd = Random.Shared;
-            for (int i = 0; i < 200; i++)
-            {
-                int x = rnd.Next(0,_w), y = rnd.Next(0,_h);
-                if (((x+y)&1)==0 && !_shot.Contains((x,y))) return (x,y);
-            }
-            for (int i = 0; i < 400; i++)
-            {
-                int x = rnd.Next(0,_w), y = rnd.Next(0,_h);
-                if (!_shot.Contains((x,y))) return (x,y);
-            }
-            return (0,0);
-        }
-
-        public void ObserveResult((int x,int y) cell, ShotOutcome outcome)
-        {
-            _shot.Add(cell);
-
-            if (outcome == ShotOutcome.Miss)
-                return;
-
-            if (outcome == ShotOutcome.Sunk)
-            {
-                // nuskandintas – NEBESHAUDOM aplink: išvalom visą "taikinį"
-                _hits.Add(cell);
-                _seedHit = null;
-                _lineDir = null;
-                _reverseTried = false;
-                _frontier.Clear();
-                return;
-            }
-
-            // Hit
-            _hits.Add(cell);
-
-            if (_seedHit is null)
-            {
-                _seedHit = cell;
-                EnqueueNeighbors(cell); // N,E,S,W
-                return;
-            }
-
-            if (_lineDir is null)
-            {
-                var dir = InferLineDirection(_seedHit.Value, cell);
-                if (dir is { } d)
-                {
-                    _lineDir = d;
-                    _reverseTried = false;
-                }
-                else
-                {
-                    EnqueueNeighbors(cell);
-                }
-            }
-        }
-
-        // ===== helpers =====
-        private bool In(int x,int y) => x>=0 && x<_w && y>=0 && y<_h;
-
-        private void EnqueueNeighbors((int x,int y) c)
-        {
-            var around = new [] { (c.x, c.y-1), (c.x+1, c.y), (c.x, c.y+1), (c.x-1, c.y) }; // N,E,S,W
-            foreach (var p in around)
-                if (In(p.Item1,p.Item2) && !_shot.Contains(p) && !_frontier.Contains(p))
-                    _frontier.Enqueue(p);
-        }
-
-        private (int dx,int dy)? InferLineDirection((int x,int y) a, (int x,int y) b)
-        {
-            if (a.x == b.x) return (0,1);   // vertikali
-            if (a.y == b.y) return (1,0);   // horizontali
-            return null;
-        }
-
-        private IEnumerable<(int x,int y)> OrderedHitsAlongLine((int x,int y) seed, (int dx,int dy) dir)
-        {
-            var line = _hits
-                .Where(h => (dir.dx==0 ? h.x==seed.x : h.y==seed.y))
-                .OrderBy(h => dir.dx!=0 ? h.x : h.y)
-                .ToList();
-
-            if (line.Count == 0) line.Add(seed);
-            return line;
         }
     }
 }

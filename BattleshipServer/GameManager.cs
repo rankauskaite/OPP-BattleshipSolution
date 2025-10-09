@@ -35,6 +35,15 @@ namespace BattleshipServer
                     {
                         // extract ships
                         var ships = new List<ShipDto>();
+                        bool isStandartGame = true;
+                        if (dto.Payload.TryGetProperty("isStandartGame", out JsonElement element))
+                        {
+                            if (element.ValueKind == JsonValueKind.True || element.ValueKind == JsonValueKind.False)
+                            {
+                                isStandartGame = element.GetBoolean();
+                                gReady.SetGameMode(player.Id, isStandartGame);
+                            }
+                        }
                         if (dto.Payload.TryGetProperty("ships", out var shipsElem))
                         {
                             foreach (var el in shipsElem.EnumerateArray())
@@ -51,9 +60,12 @@ namespace BattleshipServer
 
                         gReady.PlaceShips(player.Id, ships);
                         Console.WriteLine($"[Manager] Player {player.Name} placed {ships.Count} ships.");
-                        if (gReady.IsReady)
+                        if (gReady.IsReady && gReady.GameModesMatch)
                         {
                             await gReady.StartGame();
+                        } else if (!gReady.GameModesMatch)
+                        {
+                            Console.WriteLine("Game mode of players do not match! Try again");
                         }
                     }
                     else

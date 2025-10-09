@@ -16,12 +16,15 @@ namespace BattleshipServer
 
         private readonly int[,] _board1 = new int[10, 10];
         private readonly int[,] _board2 = new int[10, 10];
+        private bool isStandartGame1 = true;
+        private bool isStandartGame2 = true;
         private readonly List<Ship> _ships1 = new();
         private readonly List<Ship> _ships2 = new();
         private readonly GameManager _manager;
         private readonly Database _db;
 
         public bool IsReady => _ships1.Count > 0 && _ships2.Count > 0;
+        public bool GameModesMatch => isStandartGame1 == isStandartGame2;
 
         public Game(PlayerConnection p1, PlayerConnection p2, GameManager manager, Database db)
         {
@@ -58,6 +61,13 @@ namespace BattleshipServer
             // Save map JSON (playerName string used)
             var mapJson = JsonSerializer.Serialize(shipsDto);
             _db.SaveMap(playerId.ToString(), mapJson);
+        }
+
+        public void SetGameMode(Guid playerId, bool isStandartGameVal)
+        {
+            bool isStandartGame = playerId == Player1.Id ? isStandartGame1 : isStandartGame2;
+            if(playerId == Player1.Id) isStandartGame1 = isStandartGameVal;
+            else isStandartGame2 = isStandartGameVal;
         }
 
         public async Task StartGame()

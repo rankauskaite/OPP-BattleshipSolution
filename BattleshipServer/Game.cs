@@ -177,7 +177,7 @@ namespace BattleshipServer
         private PlayerConnection GetOpponent(Guid id) => id == Player1.Id ? Player2 : Player1;
     }
 
-    internal class Ship
+    public class Ship
     {
         public int X { get; }
         public int Y { get; }

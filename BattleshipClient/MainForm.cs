@@ -241,6 +241,8 @@ namespace BattleshipClient
             btnReady.Enabled = false;
             btnPlaceShips.Enabled = false;
             btnRandomize.Enabled = false;
+            radioMiniGame.Enabled = false;
+            radioStandartGame.Enabled = false;
         }
 
         private void Net_OnMessageReceived(MessageDto dto)

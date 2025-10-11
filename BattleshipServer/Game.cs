@@ -83,7 +83,7 @@ namespace BattleshipServer
             Console.WriteLine($"[Game] Started: {Player1.Name} vs {Player2.Name}");
         }
 
-        public async Task ProcessShot(Guid shooterId, int x, int y)
+        public async Task ProcessShot(Guid shooterId, int x, int y, bool isDoubleBomb)
         {
             if (shooterId != CurrentPlayerId)
             {
@@ -97,6 +97,7 @@ namespace BattleshipServer
             var targetShips = target == Player1 ? _ships1 : _ships2;
 
             bool hit = false;
+            bool success = false;
             bool gameOver = false;
 
             if (x < 0 || x >= 10 || y < 0 || y >= 10)
@@ -105,19 +106,28 @@ namespace BattleshipServer
                 return;
             }
 
-            if (targetBoard[y, x] == 1)
+            if (isDoubleBomb)
             {
-                targetBoard[y, x] = 3; // hit
-                hit = true;
+                int[] doubleBombNextCoors = GetDoubleBombCoords(targetBoard, x, y);
+                int x1 = doubleBombNextCoors[0];
+                int y1 = doubleBombNextCoors[1];
+                if (doubleBombNextCoors.Length == 2 && x1 >= 0 && y1 >= 0)
+                {
+                    (success, hit) = ProcessShot(x1, y1, targetBoard);
+                    if (!success)
+                    {
+                        await shooter.SendAsync(new Models.MessageDto { Type = "error", Payload = JsonDocument.Parse("{\"message\":\"Cell already shot\"}").RootElement });
+                        return;
+                    }
+                    var shotResult1 = JsonSerializer.SerializeToElement(new { x=x1, y=y1, result = hit ? "hit" : "miss", shooterId = shooterId.ToString(), targetId = target.Id.ToString() });
+                    await Player1.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult1 });
+                    await Player2.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult1 });
+
+                }
             }
-            else if (targetBoard[y, x] == 0)
+            (success, hit) = ProcessShot(x, y, targetBoard);
+            if (!success)
             {
-                targetBoard[y, x] = 2; // miss
-                hit = false;
-            }
-            else
-            {
-                // already shot here
                 await shooter.SendAsync(new Models.MessageDto { Type = "error", Payload = JsonDocument.Parse("{\"message\":\"Cell already shot\"}").RootElement });
                 return;
             }
@@ -181,6 +191,71 @@ namespace BattleshipServer
                 await Player1.SendAsync(new Models.MessageDto { Type = "turn", Payload = turnPayload });
                 await Player2.SendAsync(new Models.MessageDto { Type = "turn", Payload = turnPayload });
             }
+        }
+
+        private (bool, bool) ProcessShot(int x, int y, int[,] targetBoard)
+        {
+            bool success = true;
+            bool hit = false;
+            if (targetBoard[y, x] == 1)
+            {
+                targetBoard[y, x] = 3; // hit
+                hit = true;
+            }
+            else if (targetBoard[y, x] == 0)
+            {
+                targetBoard[y, x] = 2; // miss
+                hit = false;
+            }
+            else
+            {
+                // already shot here
+                success = false;
+            }
+
+            return (success, hit);
+        }
+
+        private int[] GetDoubleBombCoords(int[,] targetBoard, int x, int y)
+        {
+            int[] res = new int[4];
+            List<int[]> possible_moves = new List<int[]>();
+
+            if (y > 0 && (targetBoard[y-1, x] == 0 || targetBoard[y-1, x] == 1))
+            {
+                // second bomb drop is above current shot
+                possible_moves.Add([x, y - 1,]);
+            }
+
+            if (y < targetBoard.GetLength(0) - 1 && (targetBoard[y + 1, x] == 0 || targetBoard[y + 1, x] == 1))
+            {
+                // second bobm drop is below current shot
+                possible_moves.Add([x, y + 1]);
+            }
+
+            if(x > 0 && (targetBoard[y, x - 1] == 0 || targetBoard[y, x - 1] == 1))
+            {
+                // second bomb drop is to the left of the current shot
+                possible_moves.Add([x - 1, y]);
+            }
+
+            if (x < targetBoard.GetLength(1) - 1)
+            {
+                // second bomb drop is to the right of the current shot
+                possible_moves.Add([x + 1, y]);
+            }
+
+            if (possible_moves.Count == 0)
+            {
+                return [-1, -1];
+            }
+            if (possible_moves.Count == 1)
+            {
+                return possible_moves[0];
+            }
+            Random rnd = new Random();
+            int idx = rnd.Next(0, possible_moves.Count);
+           return possible_moves[idx];
         }
 
         private PlayerConnection GetPlayer(Guid id) => id == Player1.Id ? Player1 : Player2;

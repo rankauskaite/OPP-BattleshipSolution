@@ -21,6 +21,7 @@ namespace BattleshipClient
         public Button btnGameOver; // Naujas mygtukas
         public RadioButton radioMiniGame;
         public RadioButton radioStandartGame;
+        public Button btnDoubleBombPowerUp;
         public Label lblStatus;
         public GameBoard ownBoard { get; set; }
         public GameBoard enemyBoard { get; set; }
@@ -31,6 +32,9 @@ namespace BattleshipClient
         // state
         public List<ShipDto> myShips { get; private set; } = new List<ShipDto>();
         public bool isMyTurn = false;
+        public bool doubleBombActive = false;
+        public int maxDoubleBombsCount = 0;
+        public int doubleBombsUsed = 0;
         public string myId { get; set; } = "";
         public string oppId { get; set; } = "";
 
@@ -80,6 +84,9 @@ namespace BattleshipClient
             radioMiniGame = new RadioButton { Text = "Mini Game", Location = new Point(840, 8), AutoSize = true };
             radioStandartGame = new RadioButton { Text = "Standard Game", Location = new Point(950, 8), Checked = true };
 
+            btnDoubleBombPowerUp = new Button { Text = "Double Bomb", Location = new Point(840, 44), Width = 150, Height = 30, Enabled = false };
+            btnDoubleBombPowerUp.Click += BtnDoubleBombPowerUp_Click;
+
             btnGameOver = new Button { Text = "Game Over", Location = new Point(400, 44), Width = 100, Height = 30, Visible = false };
 
             lblStatus = new Label { Text = "Not connected", Location = new Point(10, 40), AutoSize = true };
@@ -100,7 +107,7 @@ namespace BattleshipClient
             this.Controls.Add(shipPanel);
             this.Controls.AddRange(new Control[] {
                 l1, txtServer, l2, txtName,
-                btnConnect, btnRandomize, btnPlaceShips, radioMiniGame, radioStandartGame, btnReady, btnGameOver,
+                btnConnect, btnRandomize, btnPlaceShips, radioMiniGame, radioStandartGame, btnReady, btnDoubleBombPowerUp, btnGameOver,
                 lblStatus, ownBoard, enemyBoard
             });
 
@@ -200,9 +207,20 @@ namespace BattleshipClient
 
         private async void EnemyBoard_CellClicked(object sender, Point p)
         {
-            if (!isMyTurn) { lblStatus.Text = "Not your turn."; return; }
-            lblStatus.Text = $"Firing at {p.X},{p.Y}...";
-            var shot = new { type = "shot", payload = new { x = p.X, y = p.Y } };
+            if (!this.isMyTurn) { this.lblStatus.Text = "Not your turn."; return; }
+            this.lblStatus.Text = $"Firing at {p.X},{p.Y}...";
+            var shot = new { type = "shot", payload = new { x = p.X, y = p.Y, doubleBomb = this.doubleBombActive } };
+            if (this.doubleBombActive)
+            {
+                this.doubleBombActive = false;
+                this.btnDoubleBombPowerUp.BackColor = SystemColors.Control;
+                this.doubleBombsUsed += 1;
+                if (this.doubleBombsUsed >= this.maxDoubleBombsCount)
+                {
+                    this.btnDoubleBombPowerUp.Enabled = false;
+                    this.lblStatus.Text = "All double bombs used.";
+                }
+            }
             await net.SendAsync(shot);
         }
 
@@ -243,6 +261,18 @@ namespace BattleshipClient
             btnRandomize.Enabled = false;
             radioMiniGame.Enabled = false;
             radioStandartGame.Enabled = false;
+
+            if (factory.GetPowerups().TryGetValue("DoubleBomb", out int doubleBombsCount))
+            {
+                this.maxDoubleBombsCount = doubleBombsCount;
+                this.doubleBombsUsed = 0;
+                this.btnDoubleBombPowerUp.Enabled = true;
+            }
+            else
+            {
+                this.btnDoubleBombPowerUp.Enabled = false;
+                this.doubleBombActive = false;
+            }
         }
 
         private void Net_OnMessageReceived(MessageDto dto)
@@ -268,6 +298,26 @@ namespace BattleshipClient
             }
 
             btnGameOver.Visible = false;
+        }
+
+        public void BtnDoubleBombPowerUp_Click(object sender, EventArgs e)
+        {
+            if(!this.isMyTurn)
+            {
+                return;
+            }
+            if (doubleBombsUsed < maxDoubleBombsCount)
+            {
+                doubleBombActive = !doubleBombActive;
+                btnDoubleBombPowerUp.BackColor = doubleBombActive ? Color.LightGreen : SystemColors.Control;
+                lblStatus.Text = doubleBombActive ? "Double Bomb activated!" : "Double Bomb deactivated.";
+            }
+            else
+            {
+                MessageBox.Show("No Double Bombs left!");
+                this.doubleBombActive = false;
+                this.btnDoubleBombPowerUp.Enabled = false;
+            }
         }
 
         private AbstractGameFactory ReloadBoard()

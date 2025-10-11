@@ -23,6 +23,7 @@ namespace BattleshipClient
         public RadioButton radioStandartGame;
         public Button btnDoubleBombPowerUp;
         public Label lblStatus;
+        public Label lblPowerUpInfo;
         public GameBoard ownBoard { get; set; }
         public GameBoard enemyBoard { get; set; }
         public FlowLayoutPanel shipPanel;
@@ -84,15 +85,16 @@ namespace BattleshipClient
             radioMiniGame = new RadioButton { Text = "Mini Game", Location = new Point(840, 8), AutoSize = true };
             radioStandartGame = new RadioButton { Text = "Standard Game", Location = new Point(950, 8), Checked = true };
 
-            btnDoubleBombPowerUp = new Button { Text = "Double Bomb", Location = new Point(840, 44), Width = 150, Height = 30, Enabled = false };
+            btnDoubleBombPowerUp = new Button { Text = "Double Bomb", Location = new Point(560, 88), Width = 150, Height = 30, Enabled = false, Visible = false };
             btnDoubleBombPowerUp.Click += BtnDoubleBombPowerUp_Click;
 
             btnGameOver = new Button { Text = "Game Over", Location = new Point(400, 44), Width = 100, Height = 30, Visible = false };
 
             lblStatus = new Label { Text = "Not connected", Location = new Point(10, 40), AutoSize = true };
+            lblPowerUpInfo = new Label { Location = new Point(10, 60), AutoSize = true, Visible = false };
 
-            ownBoard = new GameBoard { Location = new Point(80, 100) };
-            enemyBoard = new GameBoard { Location = new Point(550, 100) };
+            ownBoard = new GameBoard { Location = new Point(80, 130) };
+            enemyBoard = new GameBoard { Location = new Point(550, 130) };
             enemyBoard.CellClicked += EnemyBoard_CellClicked;
 
             shipPanel = new FlowLayoutPanel
@@ -108,7 +110,7 @@ namespace BattleshipClient
             this.Controls.AddRange(new Control[] {
                 l1, txtServer, l2, txtName,
                 btnConnect, btnRandomize, btnPlaceShips, radioMiniGame, radioStandartGame, btnReady, btnDoubleBombPowerUp, btnGameOver,
-                lblStatus, ownBoard, enemyBoard
+                lblStatus, lblPowerUpInfo, ownBoard, enemyBoard
             });
 
             btnReady.Enabled = false;
@@ -218,8 +220,9 @@ namespace BattleshipClient
                 if (this.doubleBombsUsed >= this.maxDoubleBombsCount)
                 {
                     this.btnDoubleBombPowerUp.Enabled = false;
-                    this.lblStatus.Text = "All double bombs used.";
+                    this.btnDoubleBombPowerUp.Visible = false;
                 }
+                UpdatePowerUpLabel();
             }
             await net.SendAsync(shot);
         }
@@ -249,7 +252,8 @@ namespace BattleshipClient
                 return;
             }
 
-            var payload = new {
+            var payload = new
+            {
                 ships = myShips,
                 isStandartGame = radioStandartGame.Checked
             };
@@ -261,18 +265,16 @@ namespace BattleshipClient
             btnRandomize.Enabled = false;
             radioMiniGame.Enabled = false;
             radioStandartGame.Enabled = false;
+            lblPowerUpInfo.Visible = true;
 
             if (factory.GetPowerups().TryGetValue("DoubleBomb", out int doubleBombsCount))
             {
                 this.maxDoubleBombsCount = doubleBombsCount;
                 this.doubleBombsUsed = 0;
                 this.btnDoubleBombPowerUp.Enabled = true;
+                this.btnDoubleBombPowerUp.Visible = true;
             }
-            else
-            {
-                this.btnDoubleBombPowerUp.Enabled = false;
-                this.doubleBombActive = false;
-            }
+            UpdatePowerUpLabel();
         }
 
         private void Net_OnMessageReceived(MessageDto dto)
@@ -302,7 +304,7 @@ namespace BattleshipClient
 
         public void BtnDoubleBombPowerUp_Click(object sender, EventArgs e)
         {
-            if(!this.isMyTurn)
+            if (!this.isMyTurn)
             {
                 return;
             }
@@ -314,9 +316,9 @@ namespace BattleshipClient
             }
             else
             {
-                MessageBox.Show("No Double Bombs left!");
                 this.doubleBombActive = false;
                 this.btnDoubleBombPowerUp.Enabled = false;
+                this.btnDoubleBombPowerUp.Visible = false;
             }
         }
 
@@ -326,15 +328,20 @@ namespace BattleshipClient
             this.Controls.Remove(ownBoard);
             this.Controls.Remove(enemyBoard);
 
-            this.ownBoard = new GameBoard(factory.GetBoardSize()) { Location = new Point(80, 100) };
+            this.ownBoard = new GameBoard(factory.GetBoardSize()) { Location = new Point(80, 130) };
             this.ownBoard.ShipDropped += OwnBoard_ShipDropped;
             this.ownBoard.CellClicked += OwnBoard_CellClickedForRemoval;
-            this.enemyBoard = new GameBoard(factory.GetBoardSize()) { Location = new Point(550, 100) };
+            this.enemyBoard = new GameBoard(factory.GetBoardSize()) { Location = new Point(550, 130) };
             this.enemyBoard.CellClicked += EnemyBoard_CellClicked;
 
             this.Controls.Add(ownBoard);
             this.Controls.Add(enemyBoard);
             return factory;
+        }
+
+        private void UpdatePowerUpLabel()
+        {
+            this.lblPowerUpInfo.Text = $"PowerUp info:\nDouble bombs: x {this.maxDoubleBombsCount - this.doubleBombsUsed}";
         }
     }
 }

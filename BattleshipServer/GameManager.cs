@@ -5,9 +5,13 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using BattleshipServer.Data;
+
 using BattleshipServer.Models;      // MessageDto, ShipDto, BoardKnowledge
 using BattleshipServer.Npc;         // NpcController, INpcShotStrategy, RuleBasedSelector, ShotStrategyFactory
 using BattleshipServer.Domain;
+
+using System.Xml.Linq;
+
 
 namespace BattleshipServer
 {
@@ -61,6 +65,14 @@ namespace BattleshipServer
                     {
                         // surenkame laivus iš payload
                         var ships = new List<ShipDto>();
+                        if (dto.Payload.TryGetProperty("isStandartGame", out JsonElement element))
+                        {
+                            if (element.ValueKind == JsonValueKind.True || element.ValueKind == JsonValueKind.False)
+                            {
+                                bool isStandartGame = element.GetBoolean();
+                                gReady.SetGameMode(player.Id, isStandartGame);
+                            }
+                        }
                         if (dto.Payload.TryGetProperty("ships", out var shipsElem))
                         {
                             foreach (var el in shipsElem.EnumerateArray())
@@ -78,13 +90,15 @@ namespace BattleshipServer
                         gReady.PlaceShips(player.Id, ships);
                         Console.WriteLine($"[Manager] Player {player.Name} placed {ships.Count} ships.");
 
-                        if (gReady.IsReady)
+                        if (gReady.IsReady && gReady.GameModesMatch)
                         {
                             await gReady.StartGame();
-
-                            // jei pirmas ėjimas botui – pajudinam iškart
+                             // jei pirmas ėjimas botui – pajudinam iškart
                             if (_gameBots.TryGetValue(gReady, out var bot) && gReady.CurrentPlayerId == bot.Id)
                                 await TryBotChainAsync(gReady, bot);
+                        } else if (!gReady.GameModesMatch)
+                        {
+                            Console.WriteLine("Game mode of players do not match! Try again");
                         }
                     }
                     else
@@ -98,16 +112,24 @@ namespace BattleshipServer
                 {
                     if (dto.Payload.TryGetProperty("x", out var xe) && dto.Payload.TryGetProperty("y", out var ye))
                     {
+                        dto.Payload.TryGetProperty("doubleBomb", out var doubleBomb);
+                        bool isDoubleBomb = false;
+                        if (doubleBomb.ValueKind == JsonValueKind.True || doubleBomb.ValueKind == JsonValueKind.False)
+                        {
+                            isDoubleBomb = doubleBomb.GetBoolean();
+                        }
                         int x = xe.GetInt32();
                         int y = ye.GetInt32();
 
                         if (_playerToGame.TryGetValue(player.Id, out var gShot))
                         {
-                            await gShot.ProcessShot(player.Id, x, y);
 
                             // po žaidėjo ėjimo – jei botui eilė, paleidžiam jo grandinę
                             if (!gShot.IsOver && _gameBots.TryGetValue(gShot, out var bot) && gShot.CurrentPlayerId == bot.Id)
                                 await TryBotChainAsync(gShot, bot);
+                          
+                            await gShot.ProcessShot(player.Id, x, y, isDoubleBomb);
+
                         }
                     }
                     break;

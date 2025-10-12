@@ -9,8 +9,8 @@ namespace BattleshipClient
 
     public class GameBoard : Control
     {
-        public const int Size = 10;
-        public CellState[,] Cells = new CellState[Size, Size];
+        public int Size { get; private set; } = 10;
+        public CellState[,] Cells;
         public int CellPx { get; set; } = 36;
         public int LabelMargin { get; set; } = 25; // vieta raidėms/skaičiams
 
@@ -27,6 +27,19 @@ namespace BattleshipClient
             this.DragDrop += GameBoard_DragDrop;
             this.Width = CellPx * Size + LabelMargin + 1;
             this.Height = CellPx * Size + LabelMargin + 1;
+            this.Cells = new CellState[this.Size, this.Size];
+        }
+
+        public GameBoard(int size)
+        {
+            this.Size = size;
+            this.DoubleBuffered = true;
+            this.AllowDrop = true; // priima drag
+            this.DragEnter += GameBoard_DragEnter;
+            this.DragDrop += GameBoard_DragDrop;
+            this.Width = CellPx * Size + LabelMargin + 1;
+            this.Height = CellPx * Size + LabelMargin + 1;
+            this.Cells = new CellState[this.Size, this.Size];
         }
 
         public void SetCell(int x, int y, CellState state)

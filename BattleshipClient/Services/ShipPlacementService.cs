@@ -4,24 +4,17 @@ namespace BattleshipClient.Services
 {
     class ShipPlacementService
     {
-        private int[] lens { get; } = new int[] { 4, 3, 3, 2, 2, 2, 1, 1, 1, 1 };
-
         public ShipPlacementService()
         {
         }
 
-        public ShipPlacementService(int[] lens)
-        {
-            this.lens = lens;
-        }
-
-        public (List<ShipDto> ships, CellState[,] map) RandomizeShips()
+        public (List<ShipDto> ships, CellState[,] map) RandomizeShips(int size, List<int> shipLengths)
         {
             var rnd = new Random();
             List<ShipDto> ships = new List<ShipDto>();
-            var temp = new CellState[GameBoard.Size, GameBoard.Size];
+            var temp = new CellState[size, size];
 
-            foreach (var len in lens)
+            foreach (var len in shipLengths)
             {
                 bool placed = false;
                 int tries = 0;
@@ -29,8 +22,8 @@ namespace BattleshipClient.Services
                 {
                     tries++;
                     bool horiz = rnd.Next(2) == 0;
-                    int x = rnd.Next(0, GameBoard.Size - (horiz ? len - 1 : 0));
-                    int y = rnd.Next(0, GameBoard.Size - (horiz ? 0 : len - 1));
+                    int x = rnd.Next(0, size - (horiz ? len - 1 : 0));
+                    int y = rnd.Next(0, size - (horiz ? 0 : len - 1));
                     bool ok = true;
                     for (int i = 0; i < len; i++)
                     {
@@ -57,8 +50,8 @@ namespace BattleshipClient.Services
 
         public static bool CanPlaceShip(GameBoard board, int x, int y, int len, bool horiz)
         {
-            if (horiz && x + len > GameBoard.Size) return false;
-            if (!horiz && y + len > GameBoard.Size) return false;
+            if (horiz && x + len > board.Size) return false;
+            if (!horiz && y + len > board.Size) return false;
 
             for (int i = 0; i < len; i++)
             {
@@ -79,9 +72,9 @@ namespace BattleshipClient.Services
             }
         }
 
-        public void HandlePlaceShip(bool placingHorizontal, FlowLayoutPanel shipPanel)
+        public void HandlePlaceShip(bool placingHorizontal, FlowLayoutPanel shipPanel, List<int> shipLengths)
         {
-            foreach (var len in this.lens)
+            foreach (var len in shipLengths)
             {
                 var preview = new ShipPreviewControl(len) { Horizontal = placingHorizontal };
                 preview.MouseDown += (s, ev) =>

@@ -100,6 +100,7 @@ namespace BattleshipClient
             });
 
             btnReady.Enabled = false;
+            SoundFactory.Play(MusicType.Background);
         }
 
         private async void BtnConnect_Click(object sender, EventArgs e)

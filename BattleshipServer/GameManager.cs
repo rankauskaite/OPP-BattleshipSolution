@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using BattleshipServer.Models;
 using BattleshipServer.Data;
+using System.Xml.Linq;
 
 namespace BattleshipServer
 {
@@ -35,6 +36,14 @@ namespace BattleshipServer
                     {
                         // extract ships
                         var ships = new List<ShipDto>();
+                        if (dto.Payload.TryGetProperty("isStandartGame", out JsonElement element))
+                        {
+                            if (element.ValueKind == JsonValueKind.True || element.ValueKind == JsonValueKind.False)
+                            {
+                                bool isStandartGame = element.GetBoolean();
+                                gReady.SetGameMode(player.Id, isStandartGame);
+                            }
+                        }
                         if (dto.Payload.TryGetProperty("ships", out var shipsElem))
                         {
                             foreach (var el in shipsElem.EnumerateArray())
@@ -51,9 +60,12 @@ namespace BattleshipServer
 
                         gReady.PlaceShips(player.Id, ships);
                         Console.WriteLine($"[Manager] Player {player.Name} placed {ships.Count} ships.");
-                        if (gReady.IsReady)
+                        if (gReady.IsReady && gReady.GameModesMatch)
                         {
                             await gReady.StartGame();
+                        } else if (!gReady.GameModesMatch)
+                        {
+                            Console.WriteLine("Game mode of players do not match! Try again");
                         }
                     }
                     else
@@ -65,11 +77,18 @@ namespace BattleshipServer
                 case "shot":
                     if (dto.Payload.TryGetProperty("x", out var xe) && dto.Payload.TryGetProperty("y", out var ye))
                     {
+                        dto.Payload.TryGetProperty("doubleBomb", out var doubleBomb);
+                        bool isDoubleBomb = false;
+                        if (doubleBomb.ValueKind == JsonValueKind.True || doubleBomb.ValueKind == JsonValueKind.False)
+                        {
+                            isDoubleBomb = doubleBomb.GetBoolean();
+                        }
                         int x = xe.GetInt32();
                         int y = ye.GetInt32();
+
                         if (_playerToGame.TryGetValue(player.Id, out var gShot))
                         {
-                            await gShot.ProcessShot(player.Id, x, y);
+                            await gShot.ProcessShot(player.Id, x, y, isDoubleBomb);
                         }
                     }
                     break;

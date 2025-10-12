@@ -19,7 +19,11 @@ namespace BattleshipClient
         public Button btnReady;
         private Button btnPlaceShips;
         public Button btnGameOver; // Naujas mygtukas
+        public RadioButton radioMiniGame;
+        public RadioButton radioStandartGame;
+        public Button btnDoubleBombPowerUp;
         public Label lblStatus;
+        public Label lblPowerUpInfo;
         public GameBoard ownBoard { get; set; }
         public GameBoard enemyBoard { get; set; }
         public FlowLayoutPanel shipPanel;
@@ -29,6 +33,9 @@ namespace BattleshipClient
         // state
         public List<ShipDto> myShips { get; private set; } = new List<ShipDto>();
         public bool isMyTurn = false;
+        public bool doubleBombActive = false;
+        public int maxDoubleBombsCount = 0;
+        public int doubleBombsUsed = 0;
         public string myId { get; set; } = "";
         public string oppId { get; set; } = "";
 
@@ -55,7 +62,7 @@ namespace BattleshipClient
         private void InitializeComponents()
         {
             this.Text = "Battleship Client";
-            this.ClientSize = new Size(950, 600);
+            this.ClientSize = new Size(1050, 600);
             this.BackColor = ColorTranslator.FromHtml("#f8f9fa");
 
             Label l1 = new Label { Text = "Server (ws):", Location = new Point(10, 10), AutoSize = true };
@@ -75,12 +82,19 @@ namespace BattleshipClient
             btnReady = new Button { Text = "Ready", Location = new Point(700, 44), Width = 130, Height = 30 };
             btnReady.Click += BtnReady_Click;
 
+            radioMiniGame = new RadioButton { Text = "Mini Game", Location = new Point(840, 8), AutoSize = true };
+            radioStandartGame = new RadioButton { Text = "Standard Game", Location = new Point(950, 8), Checked = true };
+
+            btnDoubleBombPowerUp = new Button { Text = "Double Bomb", Location = new Point(560, 88), Width = 150, Height = 30, Enabled = false, Visible = false };
+            btnDoubleBombPowerUp.Click += BtnDoubleBombPowerUp_Click;
+
             btnGameOver = new Button { Text = "Game Over", Location = new Point(400, 44), Width = 100, Height = 30, Visible = false };
 
             lblStatus = new Label { Text = "Not connected", Location = new Point(10, 40), AutoSize = true };
+            lblPowerUpInfo = new Label { Location = new Point(10, 60), AutoSize = true, Visible = false };
 
-            ownBoard = new GameBoard { Location = new Point(10, 80) };
-            enemyBoard = new GameBoard { Location = new Point(480, 80) };
+            ownBoard = new GameBoard { Location = new Point(80, 130) };
+            enemyBoard = new GameBoard { Location = new Point(550, 130) };
             enemyBoard.CellClicked += EnemyBoard_CellClicked;
 
             shipPanel = new FlowLayoutPanel
@@ -95,8 +109,8 @@ namespace BattleshipClient
             this.Controls.Add(shipPanel);
             this.Controls.AddRange(new Control[] {
                 l1, txtServer, l2, txtName,
-                btnConnect, btnRandomize, btnPlaceShips, btnReady, btnGameOver,
-                lblStatus, ownBoard, enemyBoard
+                btnConnect, btnRandomize, btnPlaceShips, radioMiniGame, radioStandartGame, btnReady, btnDoubleBombPowerUp, btnGameOver,
+                lblStatus, lblPowerUpInfo, ownBoard, enemyBoard
             });
 
             btnReady.Enabled = false;
@@ -120,9 +134,11 @@ namespace BattleshipClient
 
         private void BtnPlaceShips_Click(object sender, EventArgs e)
         {
-            this.GameService.ResetMyFormOnly(this, myShips.Count == 10, true, true);
+            AbstractGameFactory factory = this.ReloadBoard();
 
-            this.ShipPlacementService.HandlePlaceShip(placingHorizontal, shipPanel);
+            this.GameService.ResetMyFormOnly(this, myShips.Count == factory.GetShipsLength().Count, true, true);
+
+            this.ShipPlacementService.HandlePlaceShip(placingHorizontal, shipPanel, factory.GetShipsLength());
 
             lblStatus.Text = "Drag ships onto your board. Use 'R' to rotate before dragging.";
         }
@@ -133,7 +149,7 @@ namespace BattleshipClient
             int x = cell.X;
             int y = cell.Y;
 
-            if(!ShipPlacementService.CanPlaceShip(ownBoard, x, y, ship.Length, ship.Horizontal))
+            if (!ShipPlacementService.CanPlaceShip(ownBoard, x, y, ship.Length, ship.Horizontal))
             {
                 MessageBox.Show("Invalid placement here.");
                 return;
@@ -148,9 +164,11 @@ namespace BattleshipClient
                 len = ship.Length,
                 dir = ship.Horizontal ? "H" : "V"
             });
+
+            AbstractGameFactory factory = radioMiniGame.Checked ? new MiniGameFactory() : new StandartGameFactory();
             ownBoard.Ships = myShips;
             ownBoard.Invalidate();
-            btnReady.Enabled = myShips.Count == 10;
+            btnReady.Enabled = myShips.Count == factory.GetShipsLength().Count;
 
             var ctrl = shipPanel.Controls.Cast<Control>().FirstOrDefault(c => c.Tag is Guid g && g == ship.Id);
             if (ctrl != null) shipPanel.Controls.Remove(ctrl);
@@ -191,22 +209,35 @@ namespace BattleshipClient
 
         private async void EnemyBoard_CellClicked(object sender, Point p)
         {
-            if (!isMyTurn) { lblStatus.Text = "Not your turn."; return; }
-            lblStatus.Text = $"Firing at {p.X},{p.Y}...";
-            var shot = new { type = "shot", payload = new { x = p.X, y = p.Y } };
+            if (!this.isMyTurn) { this.lblStatus.Text = "Not your turn."; return; }
+            this.lblStatus.Text = $"Firing at {p.X},{p.Y}...";
+            var shot = new { type = "shot", payload = new { x = p.X, y = p.Y, doubleBomb = this.doubleBombActive } };
+            if (this.doubleBombActive)
+            {
+                this.doubleBombActive = false;
+                this.btnDoubleBombPowerUp.BackColor = SystemColors.Control;
+                this.doubleBombsUsed += 1;
+                if (this.doubleBombsUsed >= this.maxDoubleBombsCount)
+                {
+                    this.btnDoubleBombPowerUp.Enabled = false;
+                    this.btnDoubleBombPowerUp.Visible = false;
+                }
+                UpdatePowerUpLabel();
+            }
             await net.SendAsync(shot);
         }
 
         private void BtnRandomize_Click(object sender, EventArgs e)
         {
+            AbstractGameFactory factory = this.ReloadBoard();
             myShips.Clear();
-            (myShips, CellState[,] temp) = ShipPlacementService.RandomizeShips();
+            (myShips, CellState[,] temp) = ShipPlacementService.RandomizeShips(factory.GetBoardSize(), factory.GetShipsLength());
             ownBoard.Ships = myShips;
             ownBoard.Invalidate();
-            btnReady.Enabled = myShips.Count == 10;
+            btnReady.Enabled = myShips.Count == factory.GetShipsLength().Count;
 
-            for (int r = 0; r < GameBoard.Size; r++)
-                for (int c = 0; c < GameBoard.Size; c++)
+            for (int r = 0; r < ownBoard.Size; r++)
+                for (int c = 0; c < ownBoard.Size; c++)
                     ownBoard.SetCell(c, r, temp[r, c]);
 
             lblStatus.Text = $"Randomized {myShips.Count} ships.";
@@ -214,19 +245,36 @@ namespace BattleshipClient
 
         private async void BtnReady_Click(object sender, EventArgs e)
         {
-            if (myShips.Count != 10)
+            AbstractGameFactory factory = radioMiniGame.Checked ? new MiniGameFactory() : new StandartGameFactory();
+            if (myShips.Count != factory.GetShipsLength().Count)
             {
-                MessageBox.Show("You must place all ships before pressing Ready.");
+                MessageBox.Show($"You must place all {factory.GetShipsLength().Count} ships before pressing Ready.");
                 return;
             }
 
-            var payload = new { ships = myShips };
+            var payload = new
+            {
+                ships = myShips,
+                isStandartGame = radioStandartGame.Checked
+            };
             var msg = new { type = "ready", payload = payload };
             await net.SendAsync(msg);
             lblStatus.Text = "Ready sent.";
             btnReady.Enabled = false;
             btnPlaceShips.Enabled = false;
             btnRandomize.Enabled = false;
+            radioMiniGame.Enabled = false;
+            radioStandartGame.Enabled = false;
+            lblPowerUpInfo.Visible = true;
+
+            if (factory.GetPowerups().TryGetValue("DoubleBomb", out int doubleBombsCount))
+            {
+                this.maxDoubleBombsCount = doubleBombsCount;
+                this.doubleBombsUsed = 0;
+                this.btnDoubleBombPowerUp.Enabled = true;
+                this.btnDoubleBombPowerUp.Visible = true;
+            }
+            UpdatePowerUpLabel();
         }
 
         private void Net_OnMessageReceived(MessageDto dto)
@@ -252,6 +300,48 @@ namespace BattleshipClient
             }
 
             btnGameOver.Visible = false;
+        }
+
+        public void BtnDoubleBombPowerUp_Click(object sender, EventArgs e)
+        {
+            if (!this.isMyTurn)
+            {
+                return;
+            }
+            if (doubleBombsUsed < maxDoubleBombsCount)
+            {
+                doubleBombActive = !doubleBombActive;
+                btnDoubleBombPowerUp.BackColor = doubleBombActive ? Color.LightGreen : SystemColors.Control;
+                lblStatus.Text = doubleBombActive ? "Double Bomb activated!" : "Double Bomb deactivated.";
+            }
+            else
+            {
+                this.doubleBombActive = false;
+                this.btnDoubleBombPowerUp.Enabled = false;
+                this.btnDoubleBombPowerUp.Visible = false;
+            }
+        }
+
+        private AbstractGameFactory ReloadBoard()
+        {
+            AbstractGameFactory factory = radioMiniGame.Checked ? new MiniGameFactory() : new StandartGameFactory();
+            this.Controls.Remove(ownBoard);
+            this.Controls.Remove(enemyBoard);
+
+            this.ownBoard = new GameBoard(factory.GetBoardSize()) { Location = new Point(80, 130) };
+            this.ownBoard.ShipDropped += OwnBoard_ShipDropped;
+            this.ownBoard.CellClicked += OwnBoard_CellClickedForRemoval;
+            this.enemyBoard = new GameBoard(factory.GetBoardSize()) { Location = new Point(550, 130) };
+            this.enemyBoard.CellClicked += EnemyBoard_CellClicked;
+
+            this.Controls.Add(ownBoard);
+            this.Controls.Add(enemyBoard);
+            return factory;
+        }
+
+        private void UpdatePowerUpLabel()
+        {
+            this.lblPowerUpInfo.Text = $"PowerUp info:\nDouble bombs: x {this.maxDoubleBombsCount - this.doubleBombsUsed}";
         }
     }
 }

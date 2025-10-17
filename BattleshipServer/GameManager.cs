@@ -5,7 +5,9 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using BattleshipServer.Models;
 using BattleshipServer.Data;
-using System.Xml.Linq;
+using System.Xml.Linq; 
+using BattleshipServer.Npc;
+using System.Net.WebSockets;
 
 namespace BattleshipServer
 {
@@ -14,7 +16,9 @@ namespace BattleshipServer
         private readonly ConcurrentQueue<PlayerConnection> _waiting = new();
         private readonly ConcurrentDictionary<Guid, Game> _playerToGame = new();
         private readonly List<Game> _games = new();
-        private readonly Database _db = new Database("battleship.db");
+        private readonly Database _db = new Database("battleship.db"); 
+        private readonly ConcurrentDictionary<Guid, (Game game, BotOrchestrator bot)> _botGames = new();
+
 
         public async Task HandleMessageAsync(PlayerConnection player, MessageDto dto)
         {
@@ -89,9 +93,68 @@ namespace BattleshipServer
                         if (_playerToGame.TryGetValue(player.Id, out var gShot))
                         {
                             await gShot.ProcessShot(player.Id, x, y, isDoubleBomb);
+                        } 
+                        if (_botGames.TryGetValue(player.Id, out var bg))
+                        {
+                            await bg.bot.MaybePlayAsync();
                         }
+
                     }
-                    break;
+                    break; 
+                case "playBot":
+                    {
+                        // payload: ships[], isStandartGame
+                        var ships = new List<ShipDto>();
+                        bool isStandart = true;
+
+                        if (dto.Payload.TryGetProperty("isStandartGame", out var gmVal) &&
+                            (gmVal.ValueKind == JsonValueKind.True || gmVal.ValueKind == JsonValueKind.False))
+                            isStandart = gmVal.GetBoolean();
+
+                        if (dto.Payload.TryGetProperty("ships", out var shEl))
+                        {
+                            foreach (var el in shEl.EnumerateArray())
+                            {
+                                ships.Add(new ShipDto {
+                                    X = el.GetProperty("x").GetInt32(),
+                                    Y = el.GetProperty("y").GetInt32(),
+                                    Len = el.GetProperty("len").GetInt32(),
+                                    Dir = el.GetProperty("dir").GetString()
+                                });
+                            }
+                        }
+
+                        // 1) Sukuriam BOT'ą kaip PlayerConnection su NoopWebSocket
+                        var botSocket = new NoopWebSocket();
+                        var bot = new PlayerConnection(botSocket, this) { Name = "Robot" };
+
+                        // 2) Sukuriam Game (human vs bot)
+                        var g = new Game(player, bot, this, _db);
+                        _games.Add(g);
+                        _playerToGame[player.Id] = g;
+
+                        // 3) Sudedam žmogaus laivus
+                        g.SetGameMode(player.Id, isStandart);
+                        g.PlaceShips(player.Id, ships);
+
+                        // 4) Sudedam BOT laivus atsitiktinai (klasikinis 5,4,3,3,2 arba pritaikyk „Mini“)
+                        var botShips = RandomFleet(isStandart);
+                        g.SetGameMode(bot.Id, isStandart);
+                        g.PlaceShips(bot.Id, botShips);
+
+                        // 5) Prijungiam orkestratorių su tavo Rule-based selektoriumi
+                        var orchestrator = new BotOrchestrator(g, bot.Id, new RuleBasedSelector(), "checkerboard");
+                        _botGames[player.Id] = (g, orchestrator);
+
+                        // 6) Startinam žaidimą
+                        await g.StartGame();
+                        // Jei pradeda bot (pas tave pradeda Player1 – žmogus), čia nieko.
+                        // Bet jeigu kažkada norėtum, gali iškart: await orchestrator.MaybePlayAsync();
+
+                        Console.WriteLine($"[Manager] Player {player.Name} started BOT game.");
+                        break;
+                    }
+
 
                 default:
                     Console.WriteLine($"[Manager] Unknown message type: {dto.Type}");
@@ -125,7 +188,53 @@ namespace BattleshipServer
             _playerToGame.TryRemove(g.Player1.Id, out _);
             _playerToGame.TryRemove(g.Player2.Id, out _);
             _games.Remove(g);
+            _botGames.TryRemove(g.Player1.Id, out _);
+            _botGames.TryRemove(g.Player2.Id, out _);
             Console.WriteLine("[Manager] Game removed.");
+        } 
+        
+
+        private static List<ShipDto> RandomFleet(bool standart)
+        {
+            var lens = standart ? new[] {5,4,3,3,2} : new[] {3,3,2};
+            var rnd = new Random();
+            var used = new int[10,10];
+            var list = new List<ShipDto>();
+
+            foreach (var L in lens)
+            {
+                bool placed = false;
+                for (int tries=0; tries<500 && !placed; tries++)
+                {
+                    bool horiz = rnd.Next(2)==0;
+                    int x = rnd.Next(0, 10 - (horiz ? L : 0));
+                    int y = rnd.Next(0, 10 - (horiz ? 0 : L));
+                    if (CanPlace(used, x, y, L, horiz))
+                    {
+                        for (int i=0;i<L;i++)
+                        {
+                            int cx = x + (horiz? i:0);
+                            int cy = y + (horiz? 0:i);
+                            used[cy, cx] = 1;
+                        }
+                        list.Add(new ShipDto { X=x, Y=y, Len=L, Dir=horiz?"H":"V" });
+                        placed = true;
+                    }
+                }
+            }
+            return list;
+
+            static bool CanPlace(int[,] b, int x, int y, int len, bool h)
+            {
+                for (int i=0;i<len;i++)
+                {
+                    int cx = x + (h? i:0);
+                    int cy = y + (h? 0:i);
+                    if (cx<0||cx>=10||cy<0||cy>=10) return false;
+                    if (b[cy,cx]!=0) return false;
+                }
+                return true;
+            }
         }
     }
 }

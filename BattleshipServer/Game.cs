@@ -24,7 +24,10 @@ namespace BattleshipServer
         private readonly Database _db;
 
         public bool IsReady => _ships1.Count > 0 && _ships2.Count > 0;
-        public bool GameModesMatch => isStandartGame1 == isStandartGame2;
+        public bool GameModesMatch => isStandartGame1 == isStandartGame2; 
+
+        public event Action<Guid,int,int,bool,bool,List<(int x,int y)>>? ShotResolved;
+
 
         public Game(PlayerConnection p1, PlayerConnection p2, GameManager manager, Database db)
         {
@@ -134,7 +137,8 @@ namespace BattleshipServer
 
             // Update ship sink status and check overall survival
             bool anyLeft = false;
-            bool wholeDown = false;
+            bool wholeDown = false; 
+            List<(int x,int y)> sunkCells = null;
             foreach (var s in targetShips)
             {
                 bool is_sunk = s.IsSunk(targetBoard);
@@ -149,7 +153,8 @@ namespace BattleshipServer
                     int cx = s.X + (s.Horizontal ? s.Len : 0);
                     wholeDown = true;
                     if (s.Y <= y && y <= cy && s.X <= x && x <= cx)
-                    {
+                    { 
+                        sunkCells = new List<(int, int)>();
                         for (int i = 0; i < s.Len; i++)
                         {
                             int cx1 = s.X + (s.Horizontal ? i : 0);
@@ -157,8 +162,9 @@ namespace BattleshipServer
                             if (cx1 < 0 || cx1 >= 10 || cy1 < 0 || cy1 >= 10) break;
                             var updateBoard = JsonSerializer.SerializeToElement(new { x=cx1, y=cy1, result = "whole_ship_down", shooterId = shooterId.ToString(), targetId = target.Id.ToString() });
                             await Player1.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = updateBoard });
-                            await Player2.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = updateBoard });
+                            await Player2.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = updateBoard }); 
 
+                            sunkCells.Add((cx1, cy1));
                         }
                     }
                 }
@@ -167,7 +173,10 @@ namespace BattleshipServer
 
             var shotResult = JsonSerializer.SerializeToElement(new { x, y, result = hit && !wholeDown ? "hit" : hit && wholeDown ? "whole_ship_down" : "miss", shooterId = shooterId.ToString(), targetId = target.Id.ToString() });
             await Player1.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult });
-            await Player2.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult });
+            await Player2.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult }); 
+
+            ShotResolved?.Invoke(shooterId, x, y, hit, wholeDown, sunkCells ?? new List<(int,int)>());
+
 
             if (gameOver)
             {

@@ -4,7 +4,7 @@ using BattleshipServer.Models;
 
 namespace BattleshipServer.Npc
 {
-    [ShotStrategy("checkerboard")]
+    //[ShotStrategy("checkerboard")]
     public sealed class CheckerboardStrategy : INpcShotStrategy
     {
         public (int x, int y) ChooseTarget(BoardKnowledge k)

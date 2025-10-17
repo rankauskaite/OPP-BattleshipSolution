@@ -5,7 +5,7 @@ using BattleshipServer.Models;
 
 namespace BattleshipServer.Npc
 {
-    [ShotStrategy("hunt-target")]
+    //[ShotStrategy("hunt-target")]
     public sealed class HuntTargetStrategy : INpcShotStrategy
     {
         public (int x, int y) ChooseTarget(BoardKnowledge k)

@@ -307,13 +307,13 @@ namespace BattleshipClient
             lblPowerUpInfo.Visible = true;
 
             // (nebūtina, bet jei nori – kopija iš BtnReady_Click: įjungia Double Bomb pagal factory)
-            // if (factory.GetPowerups().TryGetValue("DoubleBomb", out int doubleBombsCount)) {
-            //     this.maxDoubleBombsCount = doubleBombsCount;
-            //     this.doubleBombsUsed = 0;
-            //     this.btnDoubleBombPowerUp.Enabled = true;
-            //     this.btnDoubleBombPowerUp.Visible = true;
-            //     UpdatePowerUpLabel();
-            // }
+            if (factory.GetPowerups().TryGetValue("DoubleBomb", out int doubleBombsCount)) {
+                this.maxDoubleBombsCount = doubleBombsCount;
+                this.doubleBombsUsed = 0;
+                this.btnDoubleBombPowerUp.Enabled = true;
+                this.btnDoubleBombPowerUp.Visible = true;
+                UpdatePowerUpLabel();
+            }
         }
 
         private void Net_OnMessageReceived(MessageDto dto)

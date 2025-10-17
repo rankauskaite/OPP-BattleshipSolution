@@ -4,7 +4,7 @@ using BattleshipServer.Models;
 
 namespace BattleshipServer.Npc
 {
-    [ShotStrategy("random")]
+    //[ShotStrategy("random")] 
     public sealed class RandomShotStrategy : INpcShotStrategy
     {
         public (int x, int y) ChooseTarget(BoardKnowledge k)

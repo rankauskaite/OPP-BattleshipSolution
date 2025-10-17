@@ -5,7 +5,7 @@ using BattleshipServer.Models;
 
 namespace BattleshipServer.Npc
 {
-    [ShotStrategy("human-like")]
+    //[ShotStrategy("human-like")]
     public sealed class HumanLikeFrontierHeatStrategy : INpcShotStrategy
     {
         private static readonly int[] DefaultFleet = { 4, 3, 3, 2, 2, 2, 1, 1, 1, 1 };

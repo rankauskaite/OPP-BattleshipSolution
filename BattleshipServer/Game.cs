@@ -136,8 +136,30 @@ namespace BattleshipServer
                     }
                     var shotResult1 = JsonSerializer.SerializeToElement(new { x=x1, y=y1, result = hit ? "hit" : "miss", shooterId = shooterId.ToString(), targetId = target.Id.ToString() });
                     await Player1.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult1 });
-                    await Player2.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult1 });
+                    await Player2.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult1 }); 
 
+                    ///////
+                    bool anyLeftAfterFirst = false;
+                    foreach (var s in targetShips)
+                    {
+                        if (!s.IsSunk(targetBoard))
+                        {
+                            anyLeftAfterFirst = true;
+                            break;
+                        }
+                    }
+                    if (!anyLeftAfterFirst)
+                    {
+                        _isGameOver = true;
+                        var winner = shooterId.ToString();
+                        var goPayload = JsonSerializer.SerializeToElement(new { winnerId = winner });
+                        await Player1.SendAsync(new Models.MessageDto { Type = "gameOver", Payload = goPayload });
+                        await Player2.SendAsync(new Models.MessageDto { Type = "gameOver", Payload = goPayload });
+                        _manager.GameEnded(this);
+                        _db.SaveGame(Player1.Name ?? Player1.Id.ToString(), Player2.Name ?? Player2.Id.ToString(), shooterId.ToString());
+                        return; // LABAI SVARBU: daugiau nebevykdom antro šūvio
+                    }
+                    /// 
                 }
             }
             (success, hit) = ProcessShot(x, y, targetBoard);

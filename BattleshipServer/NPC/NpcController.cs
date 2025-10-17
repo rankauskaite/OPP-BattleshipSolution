@@ -15,7 +15,7 @@ namespace BattleshipServer.Npc
 
         // Patogus ctor, jei nori inicializuoti pagal key
         public NpcController(IStrategySelector selector, string initialKey)
-            : this(selector, ShotStrategyFactory.Create(initialKey)) { }
+            : this(selector, selector.Resolve(initialKey)) { }
 
         /// <summary>
         /// Kontekstas prieš kiekvieną šūvį parenka/permąsto strategiją pagal žaidimo būseną.

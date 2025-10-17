@@ -196,7 +196,7 @@ namespace BattleshipServer
 
         private static List<ShipDto> RandomFleet(bool standart)
         {
-            var lens = standart ? new[] {5,4,3,3,2} : new[] {3,3,2};
+            var lens = standart ? new[] {4, 3, 3, 2, 2, 2, 1, 1, 1, 1} : new[] {3, 2, 2, 2, 1};
             var rnd = new Random();
             var used = new int[10,10];
             var list = new List<ShipDto>();

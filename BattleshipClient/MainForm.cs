@@ -38,6 +38,8 @@ namespace BattleshipClient
         public int doubleBombsUsed = 0;
         public string myId { get; set; } = "";
         public string oppId { get; set; } = "";
+        public string myName;
+        public string oppName;
 
         // drag & drop state
         public bool placingShips = false;
@@ -126,6 +128,7 @@ namespace BattleshipClient
                 var register = new { type = "register", payload = new { playerName = txtName.Text } };
                 await net.SendAsync(register);
                 btnConnect.Enabled = false;
+                myName = txtName.Text;
             }
             catch (Exception ex)
             {

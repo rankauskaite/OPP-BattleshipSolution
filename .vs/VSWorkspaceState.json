@@ -1,0 +1,10 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\BattleshipClient",
+    "\\BattleshipClient\\Observers",
+    "\\BattleshipClient\\Services"
+  ],
+  "SelectedNode": "\\BattleshipClient\\Observers\\GameEventManager.cs",
+  "PreviewInSolutionExplorer": false
+}

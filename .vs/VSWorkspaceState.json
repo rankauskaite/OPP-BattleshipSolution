@@ -2,9 +2,13 @@
   "ExpandedNodes": [
     "",
     "\\BattleshipClient",
+    "\\BattleshipClient\\Models",
     "\\BattleshipClient\\Observers",
-    "\\BattleshipClient\\Services"
+    "\\BattleshipClient\\Services",
+    "\\BattleshipServer",
+    "\\BattleshipServer\\Data",
+    "\\BattleshipServer\\Models"
   ],
-  "SelectedNode": "\\BattleshipClient\\Observers\\GameEventManager.cs",
+  "SelectedNode": "\\BattleshipClient\\SoundFactory.cs",
   "PreviewInSolutionExplorer": false
 }

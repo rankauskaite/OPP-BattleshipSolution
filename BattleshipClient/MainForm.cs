@@ -335,6 +335,10 @@ namespace BattleshipClient
             if (result == DialogResult.Yes)
             {
                 this.GameService.ResetForm(this, false);
+                SoundFactory.Play(MusicType.Background);
+                this.btnPlaceShips.Enabled = true;
+                this.btnRandomize.Enabled = true;
+                this.btnReady.Enabled = true;
             }
             else
             {

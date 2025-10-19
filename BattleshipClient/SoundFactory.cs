@@ -22,6 +22,7 @@ namespace BattleshipClient
     {
         private static IWavePlayer? backgroundPlayer;
         private static AudioFileReader? backgroundReader;
+        private static bool loopBackground = true;
 
         // 🎯 Garsiniai efektai
         public static void Play(HitType type)
@@ -51,29 +52,44 @@ namespace BattleshipClient
 
             if (path == null) return;
 
-            if (type == MusicType.Background)
-                PlayBackground(path);
-            else
-                PlayEffect(path);
+            switch (type)
+            {
+                case MusicType.Background:
+                    PlayBackground(path);
+                    break;
+
+                case MusicType.GameEnd:
+                    StopBackground();
+                    PlayEffect(path);
+                    break;
+
+                default:
+                    PlayEffect(path);
+                    break;
+            }
         }
 
         private static void PlayBackground(string path)
         {
             try
             {
-                StopBackground();
+                StopBackground(); // sustabdom seną muziką
 
                 backgroundReader = new AudioFileReader(path);
                 backgroundPlayer = new WaveOutEvent();
                 backgroundPlayer.Init(backgroundReader);
-                backgroundPlayer.Play();
+                loopBackground = true;
 
-                // Grojam cikle – kai baigiasi, grąžinam į pradžią
                 backgroundPlayer.PlaybackStopped += (s, e) =>
                 {
-                    backgroundReader.Position = 0;
-                    backgroundPlayer.Play();
+                    if (loopBackground && backgroundReader != null && backgroundPlayer != null)
+                    {
+                        backgroundReader.Position = 0;
+                        backgroundPlayer.Play();
+                    }
                 };
+
+                backgroundPlayer.Play();
             }
             catch (Exception ex)
             {
@@ -85,11 +101,19 @@ namespace BattleshipClient
         {
             try
             {
-                backgroundPlayer?.Stop();
-                backgroundPlayer?.Dispose();
-                backgroundReader?.Dispose();
-                backgroundPlayer = null;
-                backgroundReader = null;
+                loopBackground = false;
+                if (backgroundPlayer != null)
+                {
+                    backgroundPlayer.Stop();
+                    backgroundPlayer.Dispose();
+                    backgroundPlayer = null;
+                }
+
+                if (backgroundReader != null)
+                {
+                    backgroundReader.Dispose();
+                    backgroundReader = null;
+                }
             }
             catch (Exception ex)
             {
@@ -112,7 +136,6 @@ namespace BattleshipClient
                 player.Init(reader);
                 player.Play();
 
-                // automatiškai išvalom kai baigia groti
                 player.PlaybackStopped += (s, e) =>
                 {
                     player.Dispose();
@@ -122,6 +145,23 @@ namespace BattleshipClient
             catch (Exception ex)
             {
                 Console.WriteLine("Sound effect error: " + ex.Message);
+            }
+        }
+
+        // 💾 Log failo išvalymas žaidimo pradžioje
+        public static void ClearLogAtGameStart(string logFile)
+        {
+            try
+            {
+                if (File.Exists(logFile))
+                {
+                    File.WriteAllText(logFile, string.Empty); // išvalom failą
+                    Console.WriteLine("Žaidimo log failas išvalytas naujam raundui.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Nepavyko išvalyti log failo: " + ex.Message);
             }
         }
     }

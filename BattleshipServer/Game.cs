@@ -24,7 +24,13 @@ namespace BattleshipServer
         private readonly Database _db;
 
         public bool IsReady => _ships1.Count > 0 && _ships2.Count > 0;
-        public bool GameModesMatch => isStandartGame1 == isStandartGame2;
+        public bool GameModesMatch => isStandartGame1 == isStandartGame2;  
+
+        private bool _isGameOver = false; // <— nauja
+
+
+        public event Action<Guid,int,int,bool,bool,List<(int x,int y)>>? ShotResolved;
+
 
         public Game(PlayerConnection p1, PlayerConnection p2, GameManager manager, Database db)
         {
@@ -89,6 +95,15 @@ namespace BattleshipServer
             {
                 await GetPlayer(shooterId).SendAsync(new Models.MessageDto { Type = "error", Payload = JsonDocument.Parse("{\"message\":\"Not your turn\"}").RootElement });
                 return;
+            } 
+
+            if (_isGameOver)
+            {
+                await GetPlayer(shooterId).SendAsync(new Models.MessageDto {
+                    Type = "error",
+                    Payload = JsonDocument.Parse("{\"message\":\"Game already finished\"}").RootElement
+                });
+                return;
             }
 
             var shooter = GetPlayer(shooterId);
@@ -121,8 +136,30 @@ namespace BattleshipServer
                     }
                     var shotResult1 = JsonSerializer.SerializeToElement(new { x=x1, y=y1, result = hit ? "hit" : "miss", shooterId = shooterId.ToString(), targetId = target.Id.ToString() });
                     await Player1.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult1 });
-                    await Player2.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult1 });
+                    await Player2.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult1 }); 
 
+                    ///////
+                    bool anyLeftAfterFirst = false;
+                    foreach (var s in targetShips)
+                    {
+                        if (!s.IsSunk(targetBoard))
+                        {
+                            anyLeftAfterFirst = true;
+                            break;
+                        }
+                    }
+                    if (!anyLeftAfterFirst)
+                    {
+                        _isGameOver = true;
+                        var winner = shooterId.ToString();
+                        var goPayload = JsonSerializer.SerializeToElement(new { winnerId = winner });
+                        await Player1.SendAsync(new Models.MessageDto { Type = "gameOver", Payload = goPayload });
+                        await Player2.SendAsync(new Models.MessageDto { Type = "gameOver", Payload = goPayload });
+                        _manager.GameEnded(this);
+                        _db.SaveGame(Player1.Name ?? Player1.Id.ToString(), Player2.Name ?? Player2.Id.ToString(), shooterId.ToString());
+                        return; // LABAI SVARBU: daugiau nebevykdom antro šūvio
+                    }
+                    /// 
                 }
             }
             (success, hit) = ProcessShot(x, y, targetBoard);
@@ -132,42 +169,64 @@ namespace BattleshipServer
                 return;
             }
 
-            // Update ship sink status and check overall survival
+
             bool anyLeft = false;
             bool wholeDown = false;
+            List<(int x, int y)> sunkCells = null; 
+                                    //sunkCells = new List<(int, int)>(); 
+                                    //sunkCells.Add((cx1, cy1));
+
             foreach (var s in targetShips)
             {
                 bool is_sunk = s.IsSunk(targetBoard);
+
+
+                bool containsCurrentShot =
+                    (s.Horizontal && (y == s.Y) && (x >= s.X) && (x < s.X + s.Len)) ||
+                    (!s.Horizontal && (x == s.X) && (y >= s.Y) && (y < s.Y + s.Len));
                 if (!is_sunk)
                 {
                     anyLeft = true;
                 }
                 else
-                {
-                    s.setAsSunk(targetBoard);
-                    int cy = s.Y + (s.Horizontal ? 0 : s.Len);
-                    int cx = s.X + (s.Horizontal ? s.Len : 0);
-                    wholeDown = true;
-                    if (s.Y <= y && y <= cy && s.X <= x && x <= cx)
                     {
-                        for (int i = 0; i < s.Len; i++)
-                        {
-                            int cx1 = s.X + (s.Horizontal ? i : 0);
-                            int cy1 = s.Y + (s.Horizontal ? 0 : i);
-                            if (cx1 < 0 || cx1 >= 10 || cy1 < 0 || cy1 >= 10) break;
-                            var updateBoard = JsonSerializer.SerializeToElement(new { x=cx1, y=cy1, result = "whole_ship_down", shooterId = shooterId.ToString(), targetId = target.Id.ToString() });
-                            await Player1.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = updateBoard });
-                            await Player2.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = updateBoard });
+                        s.setAsSunk(targetBoard);
 
+
+                        if (containsCurrentShot)
+                        {
+                            wholeDown = true;
+                            sunkCells = new List<(int, int)>(); 
+
+
+                            for (int i = 0; i < s.Len; i++)
+                            { 
+                                int cx1 = s.X + (s.Horizontal ? i : 0);
+                                int cy1 = s.Y + (s.Horizontal ? 0 : i);
+                                if (cx1 < 0 || cx1 >= 10 || cy1 < 0 || cy1 >= 10) break;
+
+                                var updateBoard = JsonSerializer.SerializeToElement(new
+                                {
+                                    x = cx1, y = cy1, result = "whole_ship_down",
+                                    shooterId = shooterId.ToString(), targetId = target.Id.ToString()
+                                });
+                                await Player1.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = updateBoard });
+                                await Player2.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = updateBoard }); 
+                                
+                                sunkCells.Add((cx1, cy1));
+                            }
                         }
+
                     }
-                }
             }
             if (!anyLeft) gameOver = true;
 
             var shotResult = JsonSerializer.SerializeToElement(new { x, y, result = hit && !wholeDown ? "hit" : hit && wholeDown ? "whole_ship_down" : "miss", shooterId = shooterId.ToString(), targetId = target.Id.ToString() });
             await Player1.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult });
-            await Player2.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult });
+            await Player2.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult }); 
+
+            ShotResolved?.Invoke(shooterId, x, y, hit, wholeDown, sunkCells ?? new List<(int,int)>());
+
 
             if (gameOver)
             {
@@ -176,6 +235,7 @@ namespace BattleshipServer
                 await Player1.SendAsync(new Models.MessageDto { Type = "gameOver", Payload = goPayload });
                 await Player2.SendAsync(new Models.MessageDto { Type = "gameOver", Payload = goPayload });
 
+                _isGameOver = true; // <— PRIDĖTA
                 _manager.GameEnded(this);
                 _db.SaveGame(Player1.Name ?? Player1.Id.ToString(), Player2.Name ?? Player2.Id.ToString(), shooterId.ToString());
                 Console.WriteLine($"[Game] Game over. Winner: {winner}");
@@ -281,7 +341,7 @@ namespace BattleshipServer
                 int cx = X + (Horizontal ? i : 0);
                 int cy = Y + (Horizontal ? 0 : i);
                 if (cx < 0 || cx >= 10 || cy < 0 || cy >= 10) return false;
-                if (board[cy, cx] != 3) return false; // not hit
+                if (board[cy, cx] != 3 && board[cy, cx] != 4) return false;
             }
             return true;
         }

@@ -7,7 +7,9 @@ using BattleshipServer.Models;
 using BattleshipServer.Data;
 using System.Xml.Linq; 
 using BattleshipServer.Npc;
-using System.Net.WebSockets;
+using System.Net.WebSockets; 
+using BattleshipServer.Builders;
+
 
 namespace BattleshipServer
 {
@@ -101,9 +103,8 @@ namespace BattleshipServer
 
                     }
                     break; 
-                case "playBot":
+                    case "playBot":
                     {
-                        // payload: ships[], isStandartGame
                         var ships = new List<ShipDto>();
                         bool isStandart = true;
 
@@ -124,38 +125,39 @@ namespace BattleshipServer
                             }
                         }
 
-                        // 1) Sukuriam BOT'ą kaip PlayerConnection su NoopWebSocket
+                        // 1) Bot žaidėjas su NoopWebSocket
                         var botSocket = new NoopWebSocket();
                         var bot = new PlayerConnection(botSocket, this) { Name = "Robot" };
 
-                        // 2) Sukuriam Game (human vs bot)
-                        var g = new Game(player, bot, this, _db);
-                        _games.Add(g);
-                        _playerToGame[player.Id] = g;
+                        // 2) Pasirenkam konkretų builder'į
+                        IGameSetupBuilder builder = isStandart
+                            ? new StandardGameBuilder()
+                            : new MiniGameBuilder();
 
-                        // 3) Sudedam žmogaus laivus
-                        g.SetGameMode(player.Id, isStandart);
-                        g.PlaceShips(player.Id, ships);
+                        // 3) „surenkam“ žaidimą (fluent seka)
+                        var game = builder
+                            .CreateShell(player, bot, this, _db)
+                            .ConfigureBoard()
+                            .ConfigureFleets(ships, opponentRandom: true)
+                            .ConfigureNpc(g => {
+                                var selector = new RuleBasedSelector();
+                                return new BotOrchestrator(g, bot.Id, selector, "checkerboard");
+                            })
+                            .Build();
 
-                        // 4) Sudedam BOT laivus atsitiktinai (klasikinis 5,4,3,3,2 arba pritaikyk „Mini“)
-                        var botShips = RandomFleet(isStandart);
-                        g.SetGameMode(bot.Id, isStandart);
-                        g.PlaceShips(bot.Id, botShips);
+                        // 4) Registracija ir BotOrchestrator užkabinimas GameManager'io žemėlapyje
+                        _games.Add(game);
+                        _playerToGame[player.Id] = game;
 
-                        // 5) Prijungiam orkestratorių su tavo Rule-based selektoriumi
-                        var orchestrator = new BotOrchestrator(g, bot.Id, new RuleBasedSelector(), "checkerboard");
-                        _botGames[player.Id] = (g, orchestrator);
+                        var orch = builder.Orchestrator!;
+                        _botGames[player.Id] = (game, orch);
 
-                        // 6) Startinam žaidimą
-                        await g.StartGame();
-                        // Jei pradeda bot (pas tave pradeda Player1 – žmogus), čia nieko.
-                        // Bet jeigu kažkada norėtum, gali iškart: await orchestrator.MaybePlayAsync();
+                        // 5) Start
+                        await game.StartGame();
 
-                        Console.WriteLine($"[Manager] Player {player.Name} started BOT game.");
+                        Console.WriteLine($"[Manager] Player {player.Name} started BOT game (builder).");
                         break;
                     }
-
-
                 default:
                     Console.WriteLine($"[Manager] Unknown message type: {dto.Type}");
                     break;
@@ -194,47 +196,47 @@ namespace BattleshipServer
         } 
         
 
-        private static List<ShipDto> RandomFleet(bool standart)
-        {
-            var lens = standart ? new[] {4, 3, 3, 2, 2, 2, 1, 1, 1, 1} : new[] {3, 2, 2, 2, 1};
-            var rnd = new Random();
-            var used = new int[10,10];
-            var list = new List<ShipDto>();
+        // private static List<ShipDto> RandomFleet(bool standart)
+        // {
+        //     var lens = standart ? new[] {4, 3, 3, 2, 2, 2, 1, 1, 1, 1} : new[] {3, 2, 2, 2, 1};
+        //     var rnd = new Random();
+        //     var used = new int[10,10];
+        //     var list = new List<ShipDto>();
 
-            foreach (var L in lens)
-            {
-                bool placed = false;
-                for (int tries=0; tries<500 && !placed; tries++)
-                {
-                    bool horiz = rnd.Next(2)==0;
-                    int x = rnd.Next(0, 10 - (horiz ? L : 0));
-                    int y = rnd.Next(0, 10 - (horiz ? 0 : L));
-                    if (CanPlace(used, x, y, L, horiz))
-                    {
-                        for (int i=0;i<L;i++)
-                        {
-                            int cx = x + (horiz? i:0);
-                            int cy = y + (horiz? 0:i);
-                            used[cy, cx] = 1;
-                        }
-                        list.Add(new ShipDto { X=x, Y=y, Len=L, Dir=horiz?"H":"V" });
-                        placed = true;
-                    }
-                }
-            }
-            return list;
+        //     foreach (var L in lens)
+        //     {
+        //         bool placed = false;
+        //         for (int tries=0; tries<500 && !placed; tries++)
+        //         {
+        //             bool horiz = rnd.Next(2)==0;
+        //             int x = rnd.Next(0, 10 - (horiz ? L : 0));
+        //             int y = rnd.Next(0, 10 - (horiz ? 0 : L));
+        //             if (CanPlace(used, x, y, L, horiz))
+        //             {
+        //                 for (int i=0;i<L;i++)
+        //                 {
+        //                     int cx = x + (horiz? i:0);
+        //                     int cy = y + (horiz? 0:i);
+        //                     used[cy, cx] = 1;
+        //                 }
+        //                 list.Add(new ShipDto { X=x, Y=y, Len=L, Dir=horiz?"H":"V" });
+        //                 placed = true;
+        //             }
+        //         }
+        //     }
+        //     return list;
 
-            static bool CanPlace(int[,] b, int x, int y, int len, bool h)
-            {
-                for (int i=0;i<len;i++)
-                {
-                    int cx = x + (h? i:0);
-                    int cy = y + (h? 0:i);
-                    if (cx<0||cx>=10||cy<0||cy>=10) return false;
-                    if (b[cy,cx]!=0) return false;
-                }
-                return true;
-            }
-        }
+        //     static bool CanPlace(int[,] b, int x, int y, int len, bool h)
+        //     {
+        //         for (int i=0;i<len;i++)
+        //         {
+        //             int cx = x + (h? i:0);
+        //             int cy = y + (h? 0:i);
+        //             if (cx<0||cx>=10||cy<0||cy>=10) return false;
+        //             if (b[cy,cx]!=0) return false;
+        //         }
+        //         return true;
+        //     }
+        // }
     }
 }

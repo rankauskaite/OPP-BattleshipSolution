@@ -6,6 +6,7 @@ namespace BattleshipClient.Services
     class MessageService
     {
         private readonly GameEventManager _eventManager = new();
+        SoundFactory factory = new SoundFactory();
         public MessageService()
         {
             _eventManager.Attach(new SoundObserver());
@@ -28,7 +29,7 @@ namespace BattleshipClient.Services
                     if (dto.Payload.TryGetProperty("current", out var cur))
                         form.isMyTurn = cur.GetString() == form.myId;
                     form.lblStatus.Text = $"Game started. Opponent: {dto.Payload.GetProperty("opponent").GetString()}. Your turn: {form.isMyTurn}";
-                    SoundFactory.Play(MusicType.GameStart);
+                    factory.Play(factory.factoryMethod(MusicType.GameStart));
                     break;
 
                 case "turn":

@@ -4,100 +4,53 @@ using NAudio.Wave;
 
 namespace BattleshipClient
 {
-    public enum HitType
+    // Abstraktus kūrėjas (Creator)
+    public interface ISoundFactory
     {
-        Hit,
-        Miss,
-        Explosion
+        ISound factoryMethod(HitType hitType);
+        ISound factoryMethod(MusicType musicType);
+        void Play(ISound sound);
+        void StopBackground();
     }
 
-    public enum MusicType
+    // Konkretus kūrėjas (ConcreteCreator) su pagrindine logika
+    public class SoundFactory : ISoundFactory
     {
-        Background,
-        GameStart,
-        GameEnd
-    }
+        private IWavePlayer? backgroundPlayer;
+        private AudioFileReader? backgroundReader;
+        private bool loopBackground = true;
 
-    public static class SoundFactory
-    {
-        private static IWavePlayer? backgroundPlayer;
-        private static AudioFileReader? backgroundReader;
-        private static bool loopBackground = true;
-
-        // 🎯 Garsiniai efektai
-        public static void Play(HitType type)
+        public ISound factoryMethod(HitType hitType)
         {
-            string? path = type switch
+            return hitType switch
             {
-                HitType.Hit => "Sounds/hit.wav",
-                HitType.Miss => "Sounds/miss.wav",
-                HitType.Explosion => "Sounds/explosion.wav",
-                _ => null
+                HitType.Hit => new Sound("Sounds/hit.wav"),
+                HitType.Miss => new Sound("Sounds/miss.wav"),
+                HitType.Explosion => new Sound("Sounds/explosion.wav"),
+                _ => throw new ArgumentException("Unknown hit type")
             };
-
-            if (path != null)
-                PlayEffect(path);
         }
 
-        // 🎵 Muzika (fonas, pradžia, pabaiga)
-        public static void Play(MusicType type)
+        public ISound factoryMethod(MusicType musicType)
         {
-            string? path = type switch
+            return musicType switch
             {
-                MusicType.Background => "Sounds/background.wav",
-                MusicType.GameStart => "Sounds/game_start.wav",
-                MusicType.GameEnd => "Sounds/game_end.wav",
-                _ => null
+                MusicType.Background => new Sound("Sounds/background.wav", true),
+                MusicType.GameStart => new Sound("Sounds/game_start.wav"),
+                MusicType.GameEnd => new Sound("Sounds/game_end.wav"),
+                _ => throw new ArgumentException("Unknown music type")
             };
-
-            if (path == null) return;
-
-            switch (type)
-            {
-                case MusicType.Background:
-                    PlayBackground(path);
-                    break;
-
-                case MusicType.GameEnd:
-                    StopBackground();
-                    PlayEffect(path);
-                    break;
-
-                default:
-                    PlayEffect(path);
-                    break;
-            }
         }
 
-        private static void PlayBackground(string path)
+        public void Play(ISound sound)
         {
-            try
-            {
-                StopBackground(); // sustabdom seną muziką
-
-                backgroundReader = new AudioFileReader(path);
-                backgroundPlayer = new WaveOutEvent();
-                backgroundPlayer.Init(backgroundReader);
-                loopBackground = true;
-
-                backgroundPlayer.PlaybackStopped += (s, e) =>
-                {
-                    if (loopBackground && backgroundReader != null && backgroundPlayer != null)
-                    {
-                        backgroundReader.Position = 0;
-                        backgroundPlayer.Play();
-                    }
-                };
-
-                backgroundPlayer.Play();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Failed to play background: " + ex.Message);
-            }
+            if (sound.IsBackground)
+                PlayBackground(sound.Path);
+            else
+                PlayEffect(sound.Path);
         }
 
-        public static void StopBackground()
+        public void StopBackground()
         {
             try
             {
@@ -121,7 +74,35 @@ namespace BattleshipClient
             }
         }
 
-        private static void PlayEffect(string path)
+        private void PlayBackground(string path)
+        {
+            try
+            {
+                StopBackground();
+
+                backgroundReader = new AudioFileReader(path);
+                backgroundPlayer = new WaveOutEvent();
+                backgroundPlayer.Init(backgroundReader);
+                loopBackground = true;
+
+                backgroundPlayer.PlaybackStopped += (s, e) =>
+                {
+                    if (loopBackground && backgroundReader != null && backgroundPlayer != null)
+                    {
+                        backgroundReader.Position = 0;
+                        backgroundPlayer.Play();
+                    }
+                };
+
+                backgroundPlayer.Play();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Failed to play background: " + ex.Message);
+            }
+        }
+
+        private void PlayEffect(string path)
         {
             try
             {
@@ -145,23 +126,6 @@ namespace BattleshipClient
             catch (Exception ex)
             {
                 Console.WriteLine("Sound effect error: " + ex.Message);
-            }
-        }
-
-        // 💾 Log failo išvalymas žaidimo pradžioje
-        public static void ClearLogAtGameStart(string logFile)
-        {
-            try
-            {
-                if (File.Exists(logFile))
-                {
-                    File.WriteAllText(logFile, string.Empty); // išvalom failą
-                    Console.WriteLine("Žaidimo log failas išvalytas naujam raundui.");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Nepavyko išvalyti log failo: " + ex.Message);
             }
         }
     }

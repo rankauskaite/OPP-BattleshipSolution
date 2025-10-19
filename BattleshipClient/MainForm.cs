@@ -51,6 +51,7 @@ namespace BattleshipClient
         private MessageService MessageService = new MessageService();
 
         public List<ShipDto> Ships { get; set; } = new List<ShipDto>();
+        SoundFactory factory = new SoundFactory();
 
         public MainForm()
         {
@@ -121,7 +122,7 @@ namespace BattleshipClient
             this.Controls.Add(btnPlayBot);
 
             btnReady.Enabled = false;
-            SoundFactory.Play(MusicType.Background);
+            factory.Play(factory.factoryMethod(MusicType.Background));
         }
 
         private async void BtnConnect_Click(object sender, EventArgs e)
@@ -335,7 +336,7 @@ namespace BattleshipClient
             if (result == DialogResult.Yes)
             {
                 this.GameService.ResetForm(this, false);
-                SoundFactory.Play(MusicType.Background);
+                factory.Play(factory.factoryMethod(MusicType.Background));
                 this.btnPlaceShips.Enabled = true;
                 this.btnRandomize.Enabled = true;
                 this.btnReady.Enabled = true;

@@ -4,20 +4,21 @@ namespace BattleshipClient.Observers
     {
         public void OnGameEvent(string eventType, string playerName, object? data = null)
         {
+            SoundFactory factory = new SoundFactory();
             switch (eventType)
             {
                 case "HIT":
-                    SoundFactory.Play(HitType.Hit);
+                    factory.Play(factory.factoryMethod(HitType.Hit));
                     break;
                 case "MISS":
-                    SoundFactory.Play(HitType.Miss);
+                    factory.Play(factory.factoryMethod(HitType.Miss));
                     break;
                 case "EXPLOSION":
-                    SoundFactory.Play(HitType.Explosion);
+                    factory.Play(factory.factoryMethod(HitType.Explosion));
                     break;
                 case "WIN":
                 case "LOSE":
-                    SoundFactory.Play(MusicType.GameEnd);
+                    factory.Play(factory.factoryMethod(MusicType.GameEnd));
                     break;
             }
         }

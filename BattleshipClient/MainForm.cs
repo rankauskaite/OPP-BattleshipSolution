@@ -80,7 +80,10 @@ namespace BattleshipClient
             btnPlaceShips.Click += BtnPlaceShips_Click;
 
             btnReady = new Button { Text = "Ready", Location = new Point(700, 44), Width = 130, Height = 30 };
-            btnReady.Click += BtnReady_Click;
+            btnReady.Click += BtnReady_Click; 
+
+            var btnPlayBot = new Button { Text = "Play vs Bot", Location = new Point(400, 88), Width = 130, Height = 30 };
+            btnPlayBot.Click += BtnPlayBot_Click;
 
             radioMiniGame = new RadioButton { Text = "Mini Game", Location = new Point(840, 8), AutoSize = true };
             radioStandartGame = new RadioButton { Text = "Standard Game", Location = new Point(950, 8), Checked = true };
@@ -111,7 +114,9 @@ namespace BattleshipClient
                 l1, txtServer, l2, txtName,
                 btnConnect, btnRandomize, btnPlaceShips, radioMiniGame, radioStandartGame, btnReady, btnDoubleBombPowerUp, btnGameOver,
                 lblStatus, lblPowerUpInfo, ownBoard, enemyBoard
-            });
+            }); 
+
+            this.Controls.Add(btnPlayBot);
 
             btnReady.Enabled = false;
             SoundFactory.Play(MusicType.Background);
@@ -276,6 +281,39 @@ namespace BattleshipClient
                 this.btnDoubleBombPowerUp.Visible = true;
             }
             UpdatePowerUpLabel();
+        } 
+
+        private async void BtnPlayBot_Click(object sender, EventArgs e)
+        {
+            AbstractGameFactory factory = radioMiniGame.Checked ? new MiniGameFactory() : new StandartGameFactory();
+            if (myShips.Count != factory.GetShipsLength().Count)
+            {
+                // auto-randomize jei trūksta
+                myShips.Clear();
+                (myShips, CellState[,] temp) = ShipPlacementService.RandomizeShips(factory.GetBoardSize(), factory.GetShipsLength());
+                ownBoard.Ships = myShips;
+                ownBoard.Invalidate();
+                for (int r = 0; r < ownBoard.Size; r++)
+                    for (int c = 0; c < ownBoard.Size; c++)
+                        ownBoard.SetCell(c, r, temp[r, c]);
+            }
+
+            var payload = new { ships = myShips, isStandartGame = radioStandartGame.Checked };
+            await net.SendAsync(new { type = "playBot", payload });
+
+            lblStatus.Text = "Play vs Bot: laukiam starto...";
+            btnReady.Enabled = false; btnPlaceShips.Enabled = false; btnRandomize.Enabled = false;
+            radioMiniGame.Enabled = false; radioStandartGame.Enabled = false;
+            lblPowerUpInfo.Visible = true;
+
+            // (nebūtina, bet jei nori – kopija iš BtnReady_Click: įjungia Double Bomb pagal factory)
+            if (factory.GetPowerups().TryGetValue("DoubleBomb", out int doubleBombsCount)) {
+                this.maxDoubleBombsCount = doubleBombsCount;
+                this.doubleBombsUsed = 0;
+                this.btnDoubleBombPowerUp.Enabled = true;
+                this.btnDoubleBombPowerUp.Visible = true;
+                UpdatePowerUpLabel();
+            }
         }
 
         private void Net_OnMessageReceived(MessageDto dto)

@@ -66,7 +66,7 @@ namespace BattleshipServer
         public void SetGameMode(Guid playerId, bool isStandartGameVal)
         {
             bool isStandartGame = playerId == Player1.Id ? isStandartGame1 : isStandartGame2;
-            if(playerId == Player1.Id) isStandartGame1 = isStandartGameVal;
+            if (playerId == Player1.Id) isStandartGame1 = isStandartGameVal;
             else isStandartGame2 = isStandartGameVal;
         }
 
@@ -119,7 +119,11 @@ namespace BattleshipServer
                         await shooter.SendAsync(new Models.MessageDto { Type = "error", Payload = JsonDocument.Parse("{\"message\":\"Cell already shot\"}").RootElement });
                         return;
                     }
-                    var shotResult1 = JsonSerializer.SerializeToElement(new { x=x1, y=y1, result = hit ? "hit" : "miss", shooterId = shooterId.ToString(), targetId = target.Id.ToString() });
+                    if (hit)
+                    {
+                        await Scoreboard.Instance.AddHit(shooterId, this);
+                    }
+                    var shotResult1 = JsonSerializer.SerializeToElement(new { x = x1, y = y1, result = hit ? "hit" : "miss", shooterId = shooterId.ToString(), targetId = target.Id.ToString() });
                     await Player1.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult1 });
                     await Player2.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult1 });
 
@@ -130,6 +134,10 @@ namespace BattleshipServer
             {
                 await shooter.SendAsync(new Models.MessageDto { Type = "error", Payload = JsonDocument.Parse("{\"message\":\"Cell already shot\"}").RootElement });
                 return;
+            }
+            if (hit)
+            {
+                await Scoreboard.Instance.AddHit(shooterId, this);
             }
 
             // Update ship sink status and check overall survival
@@ -155,7 +163,7 @@ namespace BattleshipServer
                             int cx1 = s.X + (s.Horizontal ? i : 0);
                             int cy1 = s.Y + (s.Horizontal ? 0 : i);
                             if (cx1 < 0 || cx1 >= 10 || cy1 < 0 || cy1 >= 10) break;
-                            var updateBoard = JsonSerializer.SerializeToElement(new { x=cx1, y=cy1, result = "whole_ship_down", shooterId = shooterId.ToString(), targetId = target.Id.ToString() });
+                            var updateBoard = JsonSerializer.SerializeToElement(new { x = cx1, y = cy1, result = "whole_ship_down", shooterId = shooterId.ToString(), targetId = target.Id.ToString() });
                             await Player1.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = updateBoard });
                             await Player2.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = updateBoard });
 
@@ -175,6 +183,7 @@ namespace BattleshipServer
                 var goPayload = JsonSerializer.SerializeToElement(new { winnerId = winner });
                 await Player1.SendAsync(new Models.MessageDto { Type = "gameOver", Payload = goPayload });
                 await Player2.SendAsync(new Models.MessageDto { Type = "gameOver", Payload = goPayload });
+                await Scoreboard.Instance.AddWin(shooterId, this);
 
                 _manager.GameEnded(this);
                 _db.SaveGame(Player1.Name ?? Player1.Id.ToString(), Player2.Name ?? Player2.Id.ToString(), shooterId.ToString());
@@ -221,7 +230,7 @@ namespace BattleshipServer
             int[] res = new int[4];
             List<int[]> possible_moves = new List<int[]>();
 
-            if (y > 0 && (targetBoard[y-1, x] == 0 || targetBoard[y-1, x] == 1))
+            if (y > 0 && (targetBoard[y - 1, x] == 0 || targetBoard[y - 1, x] == 1))
             {
                 // second bomb drop is above current shot
                 possible_moves.Add([x, y - 1,]);
@@ -233,7 +242,7 @@ namespace BattleshipServer
                 possible_moves.Add([x, y + 1]);
             }
 
-            if(x > 0 && (targetBoard[y, x - 1] == 0 || targetBoard[y, x - 1] == 1))
+            if (x > 0 && (targetBoard[y, x - 1] == 0 || targetBoard[y, x - 1] == 1))
             {
                 // second bomb drop is to the left of the current shot
                 possible_moves.Add([x - 1, y]);
@@ -255,7 +264,7 @@ namespace BattleshipServer
             }
             Random rnd = new Random();
             int idx = rnd.Next(0, possible_moves.Count);
-           return possible_moves[idx];
+            return possible_moves[idx];
         }
 
         private PlayerConnection GetPlayer(Guid id) => id == Player1.Id ? Player1 : Player2;

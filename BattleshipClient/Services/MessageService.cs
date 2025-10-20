@@ -1,4 +1,5 @@
 ﻿using BattleshipClient.Models;
+using System.Text.Json;
 
 namespace BattleshipClient.Services
 {
@@ -71,6 +72,10 @@ namespace BattleshipClient.Services
                 case "error":
                     if (dto.Payload.TryGetProperty("message", out var err))
                         MessageBox.Show(err.GetString(), "Error");
+                    break;
+
+                case "scoreUpdate":
+                    form.UpdateScoreboardUI(dto.Payload);
                     break;
             }
         }

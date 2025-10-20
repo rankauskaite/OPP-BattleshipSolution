@@ -24,6 +24,7 @@ namespace BattleshipClient
         public Button btnDoubleBombPowerUp;
         public Label lblStatus;
         public Label lblPowerUpInfo;
+        public Label lblScoreboardBottom;
         public GameBoard ownBoard { get; set; }
         public GameBoard enemyBoard { get; set; }
         public FlowLayoutPanel shipPanel;
@@ -112,6 +113,21 @@ namespace BattleshipClient
                 btnConnect, btnRandomize, btnPlaceShips, radioMiniGame, radioStandartGame, btnReady, btnDoubleBombPowerUp, btnGameOver,
                 lblStatus, lblPowerUpInfo, ownBoard, enemyBoard
             });
+
+            lblScoreboardBottom = new Label
+            {
+                Name = "lblScoreboardBottom",
+                Text = "Scoreboard:",
+                Dock = DockStyle.Bottom,
+                Height = 70,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font(FontFamily.GenericSansSerif, 10, FontStyle.Bold),
+                BackColor = ColorTranslator.FromHtml("#e9ecef"),
+                Padding = new Padding(0, 6, 0, 6)
+            };
+            this.Controls.Add(lblScoreboardBottom);
+            this.Controls.SetChildIndex(lblScoreboardBottom, 0);
+
 
             btnReady.Enabled = false;
             SoundFactory.Play(MusicType.Background);
@@ -344,5 +360,28 @@ namespace BattleshipClient
         {
             this.lblPowerUpInfo.Text = $"PowerUp info:\nDouble bombs: x {this.maxDoubleBombsCount - this.doubleBombsUsed}";
         }
+
+        public void UpdateScoreboardUI(JsonElement payload)
+        {
+            try
+            {
+                var p1 = payload.GetProperty("p1").GetString();
+                var p2 = payload.GetProperty("p2").GetString();
+                var h1 = payload.GetProperty("hits1").GetInt32();
+                var h2 = payload.GetProperty("hits2").GetInt32();
+                var w1 = payload.GetProperty("wins1").GetInt32();
+                var w2 = payload.GetProperty("wins2").GetInt32();
+
+                lblScoreboardBottom.Text =
+                    "Scoreboard\n" +
+                    $"{p1}: Hits {h1}, Wins {w1}\n" +
+                    $"{p2}: Hits {h2}, Wins {w2}";
+            }
+            catch
+            {
+                lblScoreboardBottom.Text = "Scoreboard: (n/a)";
+            }
+        }
+
     }
 }

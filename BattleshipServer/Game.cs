@@ -1,4 +1,5 @@
 ﻿using BattleshipServer.Data;
+using BattleshipServer.Domain;
 using BattleshipServer.Models;
 using System;
 using System.Collections.Generic;
@@ -24,12 +25,12 @@ namespace BattleshipServer
         private readonly Database _db;
 
         public bool IsReady => _ships1.Count > 0 && _ships2.Count > 0;
-        public bool GameModesMatch => isStandartGame1 == isStandartGame2;  
+        public bool GameModesMatch => isStandartGame1 == isStandartGame2;
 
         private bool _isGameOver = false; // <— nauja
 
 
-        public event Action<Guid,int,int,bool,bool,List<(int x,int y)>>? ShotResolved;
+        public event Action<Guid, int, int, bool, bool, List<(int x, int y)>>? ShotResolved;
 
 
         public Game(PlayerConnection p1, PlayerConnection p2, GameManager manager, Database db)
@@ -72,7 +73,7 @@ namespace BattleshipServer
         public void SetGameMode(Guid playerId, bool isStandartGameVal)
         {
             bool isStandartGame = playerId == Player1.Id ? isStandartGame1 : isStandartGame2;
-            if(playerId == Player1.Id) isStandartGame1 = isStandartGameVal;
+            if (playerId == Player1.Id) isStandartGame1 = isStandartGameVal;
             else isStandartGame2 = isStandartGameVal;
         }
 
@@ -95,11 +96,12 @@ namespace BattleshipServer
             {
                 await GetPlayer(shooterId).SendAsync(new Models.MessageDto { Type = "error", Payload = JsonDocument.Parse("{\"message\":\"Not your turn\"}").RootElement });
                 return;
-            } 
+            }
 
             if (_isGameOver)
             {
-                await GetPlayer(shooterId).SendAsync(new Models.MessageDto {
+                await GetPlayer(shooterId).SendAsync(new Models.MessageDto
+                {
                     Type = "error",
                     Payload = JsonDocument.Parse("{\"message\":\"Game already finished\"}").RootElement
                 });
@@ -134,9 +136,9 @@ namespace BattleshipServer
                         await shooter.SendAsync(new Models.MessageDto { Type = "error", Payload = JsonDocument.Parse("{\"message\":\"Cell already shot\"}").RootElement });
                         return;
                     }
-                    var shotResult1 = JsonSerializer.SerializeToElement(new { x=x1, y=y1, result = hit ? "hit" : "miss", shooterId = shooterId.ToString(), targetId = target.Id.ToString() });
+                    var shotResult1 = JsonSerializer.SerializeToElement(new { x = x1, y = y1, result = hit ? "hit" : "miss", shooterId = shooterId.ToString(), targetId = target.Id.ToString() });
                     await Player1.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult1 });
-                    await Player2.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult1 }); 
+                    await Player2.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult1 });
 
                     ///////
                     bool anyLeftAfterFirst = false;
@@ -172,9 +174,9 @@ namespace BattleshipServer
 
             bool anyLeft = false;
             bool wholeDown = false;
-            List<(int x, int y)> sunkCells = null; 
-                                    //sunkCells = new List<(int, int)>(); 
-                                    //sunkCells.Add((cx1, cy1));
+            List<(int x, int y)> sunkCells = null;
+            //sunkCells = new List<(int, int)>(); 
+            //sunkCells.Add((cx1, cy1));
 
             foreach (var s in targetShips)
             {
@@ -189,43 +191,46 @@ namespace BattleshipServer
                     anyLeft = true;
                 }
                 else
+                {
+                    s.setAsSunk(targetBoard);
+
+
+                    if (containsCurrentShot)
                     {
-                        s.setAsSunk(targetBoard);
+                        wholeDown = true;
+                        sunkCells = new List<(int, int)>();
 
 
-                        if (containsCurrentShot)
+                        for (int i = 0; i < s.Len; i++)
                         {
-                            wholeDown = true;
-                            sunkCells = new List<(int, int)>(); 
+                            int cx1 = s.X + (s.Horizontal ? i : 0);
+                            int cy1 = s.Y + (s.Horizontal ? 0 : i);
+                            if (cx1 < 0 || cx1 >= 10 || cy1 < 0 || cy1 >= 10) break;
 
+                            var updateBoard = JsonSerializer.SerializeToElement(new
+                            {
+                                x = cx1,
+                                y = cy1,
+                                result = "whole_ship_down",
+                                shooterId = shooterId.ToString(),
+                                targetId = target.Id.ToString()
+                            });
+                            await Player1.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = updateBoard });
+                            await Player2.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = updateBoard });
 
-                            for (int i = 0; i < s.Len; i++)
-                            { 
-                                int cx1 = s.X + (s.Horizontal ? i : 0);
-                                int cy1 = s.Y + (s.Horizontal ? 0 : i);
-                                if (cx1 < 0 || cx1 >= 10 || cy1 < 0 || cy1 >= 10) break;
-
-                                var updateBoard = JsonSerializer.SerializeToElement(new
-                                {
-                                    x = cx1, y = cy1, result = "whole_ship_down",
-                                    shooterId = shooterId.ToString(), targetId = target.Id.ToString()
-                                });
-                                await Player1.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = updateBoard });
-                                await Player2.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = updateBoard }); 
-                                
-                                sunkCells.Add((cx1, cy1));
-                            }
+                            sunkCells.Add((cx1, cy1));
                         }
-
                     }
+
+                }
             }
             if (!anyLeft) gameOver = true;
 
             var shotResult = JsonSerializer.SerializeToElement(new { x, y, result = hit && !wholeDown ? "hit" : hit && wholeDown ? "whole_ship_down" : "miss", shooterId = shooterId.ToString(), targetId = target.Id.ToString() });
             await Player1.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult });
-            await Player2.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult }); 
+            await Player2.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult });
 
-            ShotResolved?.Invoke(shooterId, x, y, hit, wholeDown, sunkCells ?? new List<(int,int)>());
+            ShotResolved?.Invoke(shooterId, x, y, hit, wholeDown, sunkCells ?? new List<(int, int)>());
 
 
             if (gameOver)
@@ -281,7 +286,7 @@ namespace BattleshipServer
             int[] res = new int[4];
             List<int[]> possible_moves = new List<int[]>();
 
-            if (y > 0 && (targetBoard[y-1, x] == 0 || targetBoard[y-1, x] == 1))
+            if (y > 0 && (targetBoard[y - 1, x] == 0 || targetBoard[y - 1, x] == 1))
             {
                 // second bomb drop is above current shot
                 possible_moves.Add([x, y - 1,]);
@@ -293,7 +298,7 @@ namespace BattleshipServer
                 possible_moves.Add([x, y + 1]);
             }
 
-            if(x > 0 && (targetBoard[y, x - 1] == 0 || targetBoard[y, x - 1] == 1))
+            if (x > 0 && (targetBoard[y, x - 1] == 0 || targetBoard[y, x - 1] == 1))
             {
                 // second bomb drop is to the left of the current shot
                 possible_moves.Add([x - 1, y]);
@@ -315,45 +320,79 @@ namespace BattleshipServer
             }
             Random rnd = new Random();
             int idx = rnd.Next(0, possible_moves.Count);
-           return possible_moves[idx];
+            return possible_moves[idx];
         }
 
         private PlayerConnection GetPlayer(Guid id) => id == Player1.Id ? Player1 : Player2;
         private PlayerConnection GetOpponent(Guid id) => id == Player1.Id ? Player2 : Player1;
-    }
 
-    public class Ship
-    {
-        public int X { get; }
-        public int Y { get; }
-        public int Len { get; }
-        public bool Horizontal { get; }
-
-        public Ship(int x, int y, int len, bool horizontal)
+        public Game Clone()
         {
-            X = x; Y = y; Len = len; Horizontal = horizontal;
+            var clone = (Game)MemberwiseClone();
+            var board1Copy = (int[,])_board1.Clone();
+            var board2Copy = (int[,])_board2.Clone();
+
+            var ships1Copy = _ships1.Select(s => s.Clone()).ToList();
+            var ships2Copy = _ships2.Select(s => s.Clone()).ToList();
+
+            typeof(Game).GetField("_board1", BindingFlags.NonPublic | BindingFlags.Instance)?.SetValue(clone, board1Copy);
+            typeof(Game).GetField("_board2", BindingFlags.NonPublic | BindingFlags.Instance)?.SetValue(clone, board2Copy);
+            typeof(Game).GetField("_ships1", BindingFlags.NonPublic | BindingFlags.Instance)?.SetValue(clone, ships1Copy);
+            typeof(Game).GetField("_ships2", BindingFlags.NonPublic | BindingFlags.Instance)?.SetValue(clone, ships2Copy);
+            return clone;
         }
 
-        public bool IsSunk(int[,] board)
+        public List<ShipDto> GetPlayerShips(Guid id)
         {
-            for (int i = 0; i < Len; i++)
+            var ships = id == Player1.Id ? _ships1 : _ships2;
+            var shipsDto = ships.Select(s => new ShipDto
             {
-                int cx = X + (Horizontal ? i : 0);
-                int cy = Y + (Horizontal ? 0 : i);
-                if (cx < 0 || cx >= 10 || cy < 0 || cy >= 10) return false;
-                if (board[cy, cx] != 3 && board[cy, cx] != 4) return false;
+                X = s.X,
+                Y = s.Y,
+                Len = s.Len,
+                Dir = s.Horizontal ? "H" : "V"
+            }).ToList();
+            return shipsDto;
+        }
+
+        public class Ship
+        {
+            public int X { get; }
+            public int Y { get; }
+            public int Len { get; }
+            public bool Horizontal { get; }
+
+            public Ship(int x, int y, int len, bool horizontal)
+            {
+                X = x; Y = y; Len = len; Horizontal = horizontal;
             }
-            return true;
-        }
 
-        public void setAsSunk(int[,] board)
-        {
-            for (int i = 0; i < Len; i++)
+            public bool IsSunk(int[,] board)
             {
-                int cx = X + (Horizontal ? i : 0);
-                int cy = Y + (Horizontal ? 0 : i);
-                if (cx < 0 || cx >= 10 || cy < 0 || cy >= 10) return;
-                board[cy, cx] = 4;
+                for (int i = 0; i < Len; i++)
+                {
+                    int cx = X + (Horizontal ? i : 0);
+                    int cy = Y + (Horizontal ? 0 : i);
+                    if (cx < 0 || cx >= 10 || cy < 0 || cy >= 10) return false;
+                    if (board[cy, cx] != 3 && board[cy, cx] != 4) return false;
+                }
+                return true;
+            }
+
+            public void setAsSunk(int[,] board)
+            {
+                for (int i = 0; i < Len; i++)
+                {
+                    int cx = X + (Horizontal ? i : 0);
+                    int cy = Y + (Horizontal ? 0 : i);
+                    if (cx < 0 || cx >= 10 || cy < 0 || cy >= 10) return;
+                    board[cy, cx] = 4;
+                }
+            }
+
+            public Ship Clone()
+            {
+                return new Ship(X, Y, Len, Horizontal);
             }
         }
     }

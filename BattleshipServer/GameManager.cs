@@ -20,6 +20,7 @@ namespace BattleshipServer
         private readonly List<Game> _games = new();
         private readonly Database _db = new Database("battleship.db"); 
         private readonly ConcurrentDictionary<Guid, (Game game, BotOrchestrator bot)> _botGames = new();
+        private readonly Dictionary<Guid, Game> copiedGames = new();
 
 
         public async Task HandleMessageAsync(PlayerConnection player, MessageDto dto)
@@ -79,7 +80,30 @@ namespace BattleshipServer
                         Console.WriteLine("[Manager] Ready received but player not in a game yet.");
                     }
                     break;
+                case "copyGame":
+                    var payload = JsonSerializer.SerializeToElement(new { message = "No game to save" });
+                    if (_playerToGame.TryGetValue(player.Id, out var currentGame))
+                    {
+                        Console.WriteLine($"[Manager] Copying game for player {player.Name}...");
+                        var clonedGame = currentGame.Clone();
+                        this.StoreGameCopy(player.Id, clonedGame);
+                        payload = JsonSerializer.SerializeToElement(new { message = $"Game successfully copied" });
+                    }
+                    await player.SendAsync(new MessageDto { Type = "info", Payload = payload });
+                    break;
+                case "useGameCopy":
+                    var gameCopy = this.GetCopiedGame(player.Id);
+                    var payload1 = JsonSerializer.SerializeToElement(new { message = $"No copied game found for player {player.Name}." });
+                    if (gameCopy != null)
+                    {
+                        payload1 = JsonSerializer.SerializeToElement(new {
+                            message = $"Restoring game for player {player.Name} from copy...",
+                            ships = gameCopy.GetPlayerShips(player.Id)
+                        });
 
+                    }
+                    await player.SendAsync(new MessageDto { Type = "shipInfo", Payload = payload1 });
+                    break;
                 case "shot":
                     if (dto.Payload.TryGetProperty("x", out var xe) && dto.Payload.TryGetProperty("y", out var ye))
                     {
@@ -193,8 +217,22 @@ namespace BattleshipServer
             _botGames.TryRemove(g.Player1.Id, out _);
             _botGames.TryRemove(g.Player2.Id, out _);
             Console.WriteLine("[Manager] Game removed.");
-        } 
-        
+        }
+
+        private void StoreGameCopy(Guid playerId, Game game)
+        {
+            copiedGames[playerId] = game;
+        }
+
+        public Game? GetCopiedGame(Guid playerId)
+        {
+            if (copiedGames.TryGetValue(playerId, out var game))
+            {
+                return game;
+            }
+            return null;
+        }
+
 
         // private static List<ShipDto> RandomFleet(bool standart)
         // {

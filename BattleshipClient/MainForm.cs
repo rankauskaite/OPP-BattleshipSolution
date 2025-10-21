@@ -18,10 +18,12 @@ namespace BattleshipClient
         private Button btnRandomize;
         public Button btnReady;
         private Button btnPlaceShips;
-        public Button btnGameOver; // Naujas mygtukas
+        public Button btnGameOver;
         public RadioButton radioMiniGame;
         public RadioButton radioStandartGame;
         public Button btnDoubleBombPowerUp;
+        public Button btnSaveShipPlacement;
+        public Button btnUseGameCopy;
         public Label lblStatus;
         public Label lblPowerUpInfo;
         public GameBoard ownBoard { get; set; }
@@ -64,7 +66,7 @@ namespace BattleshipClient
         private void InitializeComponents()
         {
             this.Text = "Battleship Client";
-            this.ClientSize = new Size(1050, 600);
+            this.ClientSize = new Size(1050, 650);
             this.BackColor = ColorTranslator.FromHtml("#f8f9fa");
 
             Label l1 = new Label { Text = "Server (ws):", Location = new Point(10, 10), AutoSize = true };
@@ -82,7 +84,7 @@ namespace BattleshipClient
             btnPlaceShips.Click += BtnPlaceShips_Click;
 
             btnReady = new Button { Text = "Ready", Location = new Point(700, 44), Width = 130, Height = 30 };
-            btnReady.Click += BtnReady_Click; 
+            btnReady.Click += BtnReady_Click;
 
             var btnPlayBot = new Button { Text = "Play vs Bot", Location = new Point(400, 88), Width = 130, Height = 30 };
             btnPlayBot.Click += BtnPlayBot_Click;
@@ -92,6 +94,12 @@ namespace BattleshipClient
 
             btnDoubleBombPowerUp = new Button { Text = "Double Bomb", Location = new Point(560, 88), Width = 150, Height = 30, Enabled = false, Visible = false };
             btnDoubleBombPowerUp.Click += BtnDoubleBombPowerUp_Click;
+
+            btnSaveShipPlacement = new Button { Text = "Save ship placement", Location = new Point(840, 44), AutoSize = true, Visible = false, Enabled = false };
+            btnSaveShipPlacement.Click += BtnSaveGameShipPlacement_Click;
+
+            btnUseGameCopy = new Button { Text = "Use saved placement", Location = new Point(840, 44), AutoSize = true, Visible = true };
+            btnUseGameCopy.Click += BtnUseGameCopy_Click;
 
             btnGameOver = new Button { Text = "Game Over", Location = new Point(400, 44), Width = 100, Height = 30, Visible = false };
 
@@ -104,7 +112,7 @@ namespace BattleshipClient
 
             shipPanel = new FlowLayoutPanel
             {
-                Location = new Point(30, 480),
+                Location = new Point(80, 530),
                 Size = new Size(450, 100),
                 AutoScroll = true,
                 BorderStyle = BorderStyle.FixedSingle,
@@ -114,9 +122,9 @@ namespace BattleshipClient
             this.Controls.Add(shipPanel);
             this.Controls.AddRange(new Control[] {
                 l1, txtServer, l2, txtName,
-                btnConnect, btnRandomize, btnPlaceShips, radioMiniGame, radioStandartGame, btnReady, btnDoubleBombPowerUp, btnGameOver,
+                btnConnect, btnRandomize, btnPlaceShips, radioMiniGame, radioStandartGame, btnReady, btnSaveShipPlacement, btnUseGameCopy, btnDoubleBombPowerUp, btnGameOver,
                 lblStatus, lblPowerUpInfo, ownBoard, enemyBoard
-            }); 
+            });
 
             this.Controls.Add(btnPlayBot);
 
@@ -174,10 +182,9 @@ namespace BattleshipClient
                 dir = ship.Horizontal ? "H" : "V"
             });
 
-            AbstractGameFactory factory = radioMiniGame.Checked ? new MiniGameFactory() : new StandartGameFactory();
             ownBoard.Ships = myShips;
             ownBoard.Invalidate();
-            btnReady.Enabled = myShips.Count == factory.GetShipsLength().Count;
+            btnReady.Enabled = myShips.Count == GetShipCount();
 
             var ctrl = shipPanel.Controls.Cast<Control>().FirstOrDefault(c => c.Tag is Guid g && g == ship.Id);
             if (ctrl != null) shipPanel.Controls.Remove(ctrl);
@@ -191,7 +198,7 @@ namespace BattleshipClient
             (bool successful_removal, int len) = this.ShipPlacementService.RemoveShip(this.myShips, this.ownBoard, this.shipPanel, p);
             if (successful_removal && len >= 0)
             {
-                btnReady.Enabled = myShips.Count == 10;
+                btnReady.Enabled = myShips.Count == GetShipCount();
                 lblStatus.Text = $"Removed {len}-cell ship from board.";
             }
         }
@@ -284,7 +291,10 @@ namespace BattleshipClient
                 this.btnDoubleBombPowerUp.Visible = true;
             }
             UpdatePowerUpLabel();
-        } 
+            this.btnUseGameCopy.Visible = false;
+            this.btnSaveShipPlacement.Visible = true;
+            this.btnSaveShipPlacement.Enabled = true;
+        }
 
         private async void BtnPlayBot_Click(object sender, EventArgs e)
         {
@@ -310,7 +320,8 @@ namespace BattleshipClient
             lblPowerUpInfo.Visible = true;
 
             // (nebūtina, bet jei nori – kopija iš BtnReady_Click: įjungia Double Bomb pagal factory)
-            if (factory.GetPowerups().TryGetValue("DoubleBomb", out int doubleBombsCount)) {
+            if (factory.GetPowerups().TryGetValue("DoubleBomb", out int doubleBombsCount))
+            {
                 this.maxDoubleBombsCount = doubleBombsCount;
                 this.doubleBombsUsed = 0;
                 this.btnDoubleBombPowerUp.Enabled = true;
@@ -335,6 +346,12 @@ namespace BattleshipClient
             if (result == DialogResult.Yes)
             {
                 this.GameService.ResetForm(this, false);
+                this.btnPlaceShips.Enabled = true;
+                this.btnRandomize.Enabled = true;
+                this.btnReady.Enabled = true;
+                this.btnUseGameCopy.Enabled = true;
+                this.btnUseGameCopy.Visible = true;
+                this.btnSaveShipPlacement.Visible = false;
             }
             else
             {
@@ -364,6 +381,20 @@ namespace BattleshipClient
             }
         }
 
+        public async void BtnSaveGameShipPlacement_Click(object sender, EventArgs e)
+        {
+            var saveCopyMsg = new { type = "copyGame" };
+            await net.SendAsync(saveCopyMsg);
+            this.btnSaveShipPlacement.Visible = false;
+        }
+
+        public async void BtnUseGameCopy_Click(object sender, EventArgs e)
+        {
+            var useCopyMsg = new { type = "useGameCopy" };
+            await net.SendAsync(useCopyMsg);
+            this.btnUseGameCopy.Enabled = false;
+        }
+
         private AbstractGameFactory ReloadBoard()
         {
             AbstractGameFactory factory = radioMiniGame.Checked ? new MiniGameFactory() : new StandartGameFactory();
@@ -384,6 +415,13 @@ namespace BattleshipClient
         private void UpdatePowerUpLabel()
         {
             this.lblPowerUpInfo.Text = $"PowerUp info:\nDouble bombs: x {this.maxDoubleBombsCount - this.doubleBombsUsed}";
+        }
+
+        public int GetShipCount()
+        {
+            AbstractGameFactory factory = radioMiniGame.Checked ? new MiniGameFactory() : new StandartGameFactory();
+
+            return factory.GetShipsLength().Count;
         }
     }
 }

@@ -9,7 +9,12 @@ using System.Threading.Tasks;
 
 namespace BattleshipServer
 {
-    public class Game
+    public interface IClonable
+    {
+        Game Clone();
+    }
+
+    public class Game : IClonable
     {
         public PlayerConnection Player1 { get; }
         public PlayerConnection Player2 { get; }

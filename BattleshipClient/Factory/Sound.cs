@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace BattleshipClient
+namespace BattleshipClient.Factory
 {
     public enum HitType
     {

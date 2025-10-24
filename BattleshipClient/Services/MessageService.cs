@@ -1,6 +1,8 @@
-using BattleshipClient.Models;
+﻿using BattleshipClient.Models;
 using BattleshipClient.Observers;
+using BattleshipClient.Factory;
 using System.Windows.Forms;
+using System.Text.Json;
 
 namespace BattleshipClient.Services
 {
@@ -65,35 +67,49 @@ namespace BattleshipClient.Services
                     break;
 
                 case "shotResult":
-                    int x = dto.Payload.GetProperty("x").GetInt32();
-                    int y = dto.Payload.GetProperty("y").GetInt32();
-                    string res = dto.Payload.GetProperty("result").GetString();
-                    string shooter = dto.Payload.GetProperty("shooterId").GetString();
-
-                    bool isMyShot = shooter == form.myId;
-                    string shooterName = isMyShot ? form.myName : form.oppName;
-
-                    if (isMyShot)
-                        form.enemyBoard.SetCell(x, y, res == "hit" ? CellState.Hit : res == "whole_ship_down" ? CellState.Whole_ship_down : CellState.Miss);
-                    else
-                        form.ownBoard.SetCell(x, y, res == "hit" ? CellState.Hit : res == "whole_ship_down" ? CellState.Whole_ship_down : CellState.Miss);
-
-                    form.lblStatus.Text = $"Shot result: {res} at {x},{y}";
-
-                    if (!isMyShot)
                     {
-                        Ship targetShip = form.ownShips.FirstOrDefault(s => s.X <= x && s.X + (s._direction == "H" ? s._length : 0) > x &&
-                                                                          s.Y <= y && s.Y + (s._direction == "V" ? s._length : 0) > y);
-                        if (targetShip != null)
+                        int x = dto.Payload.GetProperty("x").GetInt32();
+                        int y = dto.Payload.GetProperty("y").GetInt32();
+                        string res = dto.Payload.GetProperty("result").GetString();
+                        string shooter = dto.Payload.GetProperty("shooterId").GetString();
+
+                        bool isMyShot = shooter == form.myId;
+                        string shooterName = isMyShot ? form.myName : form.oppName;
+
+                        CellState newState = res switch
                         {
-                            targetShip.RegisterShot(x, y);
-                        }
-                        else
+                            "hit" => CellState.Hit,
+                            "whole_ship_down" => CellState.Whole_ship_down,
+                            _ => CellState.Miss
+                        };
+
+                        var board = isMyShot ? form.enemyBoard : form.ownBoard;
+
+                        var prevState = board.GetCell(x, y);
+
+                        var cmd = new BattleshipClient.Commands.ShotCommand(board, x, y, prevState, newState, shooterName);
+                        form.CommandManager.ExecuteCommand(cmd);
+
+                        form.lblStatus.Text = $"Shot result: {res} at {x},{y}";
+
+                        if (!isMyShot)
                         {
-                            _eventManager.Notify("MISS", shooterName);
+                            Ship targetShip = form.ownShips.FirstOrDefault(s =>
+                                s.X <= x && s.X + (s._direction == "H" ? s._length : 0) > x &&
+                                s.Y <= y && s.Y + (s._direction == "V" ? s._length : 0) > y);
+
+                            if (targetShip != null)
+                            {
+                                targetShip.RegisterShot(x, y);
+                            }
+                            else
+                            {
+                                _eventManager.Notify("MISS", shooterName);
+                            }
                         }
+
+                        break;
                     }
-                    break;
 
                 case "gameOver":
                     if (dto.Payload.TryGetProperty("winnerId", out var w))
@@ -104,6 +120,7 @@ namespace BattleshipClient.Services
                         MessageBox.Show(form.lblStatus.Text, "Game Over");
                         _eventManager.Notify(winner == form.myId ? "WIN" : "LOSE", winnerName);
                         form.btnGameOver.Visible = true;
+                        form.btnReplay.Visible = true;
                         form.isMyTurn = false;
                     }
                     break;

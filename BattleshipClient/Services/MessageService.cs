@@ -1,4 +1,4 @@
-﻿using BattleshipClient.Models;
+using BattleshipClient.Models;
 using BattleshipClient.Observers;
 using System.Windows.Forms;
 
@@ -33,7 +33,29 @@ namespace BattleshipClient.Services
                     form.lblStatus.Text = $"Game started. Opponent: {dto.Payload.GetProperty("opponent").GetString()}. Your turn: {form.isMyTurn}";
                     _factory.Play(_factory.factoryMethod(MusicType.GameStart));
                     break;
-
+                case "shipInfo":
+                    if (dto.Payload.TryGetProperty("message", out var me1))
+                        form.lblStatus.Text = me1.GetString();
+                    if (dto.Payload.TryGetProperty("ships", out var shipsJson))
+                    {
+                        var ships = JsonSerializer.Deserialize<List<ShipDto>>(shipsJson.GetRawText(), new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        if (ships == null)
+                        {
+                            break;
+                        }
+                        var gameService = new GameService();
+                        gameService.ResetMyFormOnly(form, true, true, true);
+                        foreach (var ship in ships)
+                        {
+                            bool horiz = ship.dir == "H";
+                            ShipPlacementService.PlaceShip(form.ownBoard, ship.x, ship.y, ship.len, horiz);
+                            form.myShips.Add(ship);
+                        }
+                        form.ownBoard.Ships = form.myShips;
+                        form.ownBoard.Invalidate();
+                        form.btnReady.Enabled = form.myShips.Count == form.GetShipCount();
+                    }
+                    break;
                 case "turn":
                     if (dto.Payload.TryGetProperty("current", out var cur2))
                     {

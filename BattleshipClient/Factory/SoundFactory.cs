@@ -2,7 +2,7 @@
 using System.IO;
 using NAudio.Wave;
 
-namespace BattleshipClient
+namespace BattleshipClient.Factory
 {
     // Abstraktus kūrėjas (Creator)
     public interface ISoundFactory

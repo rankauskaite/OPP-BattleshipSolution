@@ -8,6 +8,8 @@ using System.Windows.Forms;
 using BattleshipClient.Models;
 using BattleshipClient.Services;
 using BattleshipClient.Observers;
+using BattleshipClient.Factory;
+using BattleshipClient.Commands;
 
 namespace BattleshipClient
 {
@@ -30,6 +32,10 @@ namespace BattleshipClient
         public GameBoard ownBoard { get; set; }
         public GameBoard enemyBoard { get; set; }
         public FlowLayoutPanel shipPanel;
+        private Button btnPrev;
+        private Button btnNext;
+        public Button btnReplay;
+        private bool isReplayMode = false;
 
         public NetworkClient net { get; private set; } = new NetworkClient();
 
@@ -56,6 +62,7 @@ namespace BattleshipClient
 
         public List<ShipDto> Ships { get; set; } = new List<ShipDto>();
         private SoundFactory _factory = new SoundFactory();
+        public GameCommandManager CommandManager = new GameCommandManager();
 
         public MainForm()
         {
@@ -133,6 +140,16 @@ namespace BattleshipClient
 
             btnReady.Enabled = false;
             _factory.Play(_factory.factoryMethod(MusicType.Background));
+
+            btnReplay = new Button { Text = "Replay", Location = new Point(600, 530), Width = 80, Height = 30, Visible = false };
+            btnPrev = new Button { Text = "◀ Prev", Location = new Point(700, 530), Width = 80, Height = 30, Visible = false };
+            btnNext = new Button { Text = "Next ▶", Location = new Point(800, 530), Width = 80, Height = 30, Visible = false };
+
+            btnReplay.Click += BtnReplay_Click;
+            btnPrev.Click += BtnPrev_Click;
+            btnNext.Click += BtnNext_Click;
+
+            this.Controls.AddRange(new Control[] { btnReplay, btnPrev, btnNext });
         }
 
         private async void BtnConnect_Click(object sender, EventArgs e)
@@ -365,6 +382,9 @@ namespace BattleshipClient
                 this.btnUseGameCopy.Enabled = true;
                 this.btnUseGameCopy.Visible = true;
                 this.btnSaveShipPlacement.Visible = false;
+                this.btnNext.Visible = false;
+                this.btnPrev.Visible = false;
+                this.btnReplay.Visible = false;
             }
             else
             {
@@ -435,6 +455,31 @@ namespace BattleshipClient
             AbstractGameFactory factory = radioMiniGame.Checked ? new MiniGameFactory() : new StandartGameFactory();
 
             return factory.GetShipsLength().Count;
+        }
+
+        private void BtnReplay_Click(object sender, EventArgs e)
+        {
+            if (CommandManager.TotalCommands == 0)
+            {
+                MessageBox.Show("No replay data available!");
+                return;
+            }
+
+            isReplayMode = true;
+            lblStatus.Text = "Replay Mode Active";
+            btnPrev.Visible = btnNext.Visible = true;
+        }
+
+        private void BtnPrev_Click(object sender, EventArgs e)
+        {
+            if (isReplayMode && CommandManager.CanUndo)
+                CommandManager.Undo();
+        }
+
+        private void BtnNext_Click(object sender, EventArgs e)
+        {
+            if (isReplayMode && CommandManager.CanRedo)
+                CommandManager.Redo();
         }
     }
 }

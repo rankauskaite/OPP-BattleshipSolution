@@ -1,3 +1,5 @@
+using BattleshipClient.Factory;
+
 namespace BattleshipClient.Observers
 {
     public class SoundObserver : IGameObserver

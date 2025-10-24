@@ -6,9 +6,8 @@
     "\\BattleshipClient\\Observers",
     "\\BattleshipClient\\Services",
     "\\BattleshipServer",
-    "\\BattleshipServer\\Data",
-    "\\BattleshipServer\\Models"
+    "\\BattleshipServer\\Builder",
+    "\\BattleshipServer\\NPC"
   ],
-  "SelectedNode": "\\BattleshipClient\\SoundFactory.cs",
   "PreviewInSolutionExplorer": false
 }

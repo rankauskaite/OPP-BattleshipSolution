@@ -4,60 +4,77 @@ using NAudio.Wave;
 
 namespace BattleshipClient
 {
-    public enum HitType
+    // Abstraktus kūrėjas (Creator)
+    public interface ISoundFactory
     {
-        Hit,
-        Miss,
-        Explosion
+        ISound factoryMethod(HitType hitType);
+        ISound factoryMethod(MusicType musicType);
+        void Play(ISound sound);
+        void StopBackground();
     }
 
-    public enum MusicType
+    // Konkretus kūrėjas (ConcreteCreator) su pagrindine logika
+    public class SoundFactory : ISoundFactory
     {
-        Background,
-        GameStart,
-        GameEnd
-    }
+        private IWavePlayer? backgroundPlayer;
+        private AudioFileReader? backgroundReader;
+        private bool loopBackground = true;
 
-    public static class SoundFactory
-    {
-        private static IWavePlayer? backgroundPlayer;
-        private static AudioFileReader? backgroundReader;
-
-        // 🎯 Garsiniai efektai
-        public static void Play(HitType type)
+        public ISound factoryMethod(HitType hitType)
         {
-            string? path = type switch
+            return hitType switch
             {
-                HitType.Hit => "Sounds/hit.wav",
-                HitType.Miss => "Sounds/miss.wav",
-                HitType.Explosion => "Sounds/explosion.wav",
-                _ => null
+                HitType.Hit => new Sound("Sounds/hit.wav"),
+                HitType.Miss => new Sound("Sounds/miss.wav"),
+                HitType.Explosion => new Sound("Sounds/explosion.wav"),
+                _ => throw new ArgumentException("Unknown hit type")
             };
-
-            if (path != null)
-                PlayEffect(path);
         }
 
-        // 🎵 Muzika (fonas, pradžia, pabaiga)
-        public static void Play(MusicType type)
+        public ISound factoryMethod(MusicType musicType)
         {
-            string? path = type switch
+            return musicType switch
             {
-                MusicType.Background => "Sounds/background.wav",
-                MusicType.GameStart => "Sounds/game_start.wav",
-                MusicType.GameEnd => "Sounds/game_end.wav",
-                _ => null
+                MusicType.Background => new Sound("Sounds/background.wav", true),
+                MusicType.GameStart => new Sound("Sounds/game_start.wav"),
+                MusicType.GameEnd => new Sound("Sounds/game_end.wav"),
+                _ => throw new ArgumentException("Unknown music type")
             };
+        }
 
-            if (path == null) return;
-
-            if (type == MusicType.Background)
-                PlayBackground(path);
+        public void Play(ISound sound)
+        {
+            if (sound.IsBackground)
+                PlayBackground(sound.Path);
             else
-                PlayEffect(path);
+                PlayEffect(sound.Path);
         }
 
-        private static void PlayBackground(string path)
+        public void StopBackground()
+        {
+            try
+            {
+                loopBackground = false;
+                if (backgroundPlayer != null)
+                {
+                    backgroundPlayer.Stop();
+                    backgroundPlayer.Dispose();
+                    backgroundPlayer = null;
+                }
+
+                if (backgroundReader != null)
+                {
+                    backgroundReader.Dispose();
+                    backgroundReader = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Failed to stop background: " + ex.Message);
+            }
+        }
+
+        private void PlayBackground(string path)
         {
             try
             {
@@ -66,14 +83,18 @@ namespace BattleshipClient
                 backgroundReader = new AudioFileReader(path);
                 backgroundPlayer = new WaveOutEvent();
                 backgroundPlayer.Init(backgroundReader);
-                backgroundPlayer.Play();
+                loopBackground = true;
 
-                // Grojam cikle – kai baigiasi, grąžinam į pradžią
                 backgroundPlayer.PlaybackStopped += (s, e) =>
                 {
-                    backgroundReader.Position = 0;
-                    backgroundPlayer.Play();
+                    if (loopBackground && backgroundReader != null && backgroundPlayer != null)
+                    {
+                        backgroundReader.Position = 0;
+                        backgroundPlayer.Play();
+                    }
                 };
+
+                backgroundPlayer.Play();
             }
             catch (Exception ex)
             {
@@ -81,23 +102,7 @@ namespace BattleshipClient
             }
         }
 
-        public static void StopBackground()
-        {
-            try
-            {
-                backgroundPlayer?.Stop();
-                backgroundPlayer?.Dispose();
-                backgroundReader?.Dispose();
-                backgroundPlayer = null;
-                backgroundReader = null;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Failed to stop background: " + ex.Message);
-            }
-        }
-
-        private static void PlayEffect(string path)
+        private void PlayEffect(string path)
         {
             try
             {
@@ -112,7 +117,6 @@ namespace BattleshipClient
                 player.Init(reader);
                 player.Play();
 
-                // automatiškai išvalom kai baigia groti
                 player.PlaybackStopped += (s, e) =>
                 {
                     player.Dispose();

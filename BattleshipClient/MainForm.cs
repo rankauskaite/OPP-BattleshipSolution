@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using BattleshipClient.Models;
 using BattleshipClient.Services;
+using BattleshipClient.Observers;
 
 namespace BattleshipClient
 {
@@ -18,7 +19,7 @@ namespace BattleshipClient
         private Button btnRandomize;
         public Button btnReady;
         private Button btnPlaceShips;
-        public Button btnGameOver; // Naujas mygtukas
+        public Button btnGameOver;
         public RadioButton radioMiniGame;
         public RadioButton radioStandartGame;
         public Button btnDoubleBombPowerUp;
@@ -32,6 +33,7 @@ namespace BattleshipClient
 
         // state
         public List<ShipDto> myShips { get; private set; } = new List<ShipDto>();
+        public List<Ship> ownShips { get; private set; } = new List<Ship>();
         public bool isMyTurn = false;
         public bool doubleBombActive = false;
         public int maxDoubleBombsCount = 0;
@@ -51,7 +53,7 @@ namespace BattleshipClient
         private MessageService MessageService = new MessageService();
 
         public List<ShipDto> Ships { get; set; } = new List<ShipDto>();
-        SoundFactory factory = new SoundFactory();
+        private SoundFactory _factory = new SoundFactory();
 
         public MainForm()
         {
@@ -83,7 +85,7 @@ namespace BattleshipClient
             btnPlaceShips.Click += BtnPlaceShips_Click;
 
             btnReady = new Button { Text = "Ready", Location = new Point(700, 44), Width = 130, Height = 30 };
-            btnReady.Click += BtnReady_Click; 
+            btnReady.Click += BtnReady_Click;
 
             var btnPlayBot = new Button { Text = "Play vs Bot", Location = new Point(400, 88), Width = 130, Height = 30 };
             btnPlayBot.Click += BtnPlayBot_Click;
@@ -117,12 +119,12 @@ namespace BattleshipClient
                 l1, txtServer, l2, txtName,
                 btnConnect, btnRandomize, btnPlaceShips, radioMiniGame, radioStandartGame, btnReady, btnDoubleBombPowerUp, btnGameOver,
                 lblStatus, lblPowerUpInfo, ownBoard, enemyBoard
-            }); 
+            });
 
             this.Controls.Add(btnPlayBot);
 
             btnReady.Enabled = false;
-            factory.Play(factory.factoryMethod(MusicType.Background));
+            _factory.Play(_factory.factoryMethod(MusicType.Background));
         }
 
         private async void BtnConnect_Click(object sender, EventArgs e)
@@ -262,6 +264,13 @@ namespace BattleshipClient
                 return;
             }
 
+            // Konvertuojame ShipDto į Ship
+            ownShips.Clear();
+            foreach (var shipDto in myShips)
+            {
+                ownShips.Add(new Ship(new GameEventManager(), shipDto, myName));
+            }
+
             var payload = new
             {
                 ships = myShips,
@@ -285,14 +294,13 @@ namespace BattleshipClient
                 this.btnDoubleBombPowerUp.Visible = true;
             }
             UpdatePowerUpLabel();
-        } 
+        }
 
         private async void BtnPlayBot_Click(object sender, EventArgs e)
         {
             AbstractGameFactory factory = radioMiniGame.Checked ? new MiniGameFactory() : new StandartGameFactory();
             if (myShips.Count != factory.GetShipsLength().Count)
             {
-                // auto-randomize jei trūksta
                 myShips.Clear();
                 (myShips, CellState[,] temp) = ShipPlacementService.RandomizeShips(factory.GetBoardSize(), factory.GetShipsLength());
                 ownBoard.Ships = myShips;
@@ -306,12 +314,15 @@ namespace BattleshipClient
             await net.SendAsync(new { type = "playBot", payload });
 
             lblStatus.Text = "Play vs Bot: laukiam starto...";
-            btnReady.Enabled = false; btnPlaceShips.Enabled = false; btnRandomize.Enabled = false;
-            radioMiniGame.Enabled = false; radioStandartGame.Enabled = false;
+            btnReady.Enabled = false;
+            btnPlaceShips.Enabled = false;
+            btnRandomize.Enabled = false;
+            radioMiniGame.Enabled = false;
+            radioStandartGame.Enabled = false;
             lblPowerUpInfo.Visible = true;
 
-            // (nebūtina, bet jei nori – kopija iš BtnReady_Click: įjungia Double Bomb pagal factory)
-            if (factory.GetPowerups().TryGetValue("DoubleBomb", out int doubleBombsCount)) {
+            if (factory.GetPowerups().TryGetValue("DoubleBomb", out int doubleBombsCount))
+            {
                 this.maxDoubleBombsCount = doubleBombsCount;
                 this.doubleBombsUsed = 0;
                 this.btnDoubleBombPowerUp.Enabled = true;
@@ -336,7 +347,7 @@ namespace BattleshipClient
             if (result == DialogResult.Yes)
             {
                 this.GameService.ResetForm(this, false);
-                factory.Play(factory.factoryMethod(MusicType.Background));
+                _factory.Play(_factory.factoryMethod(MusicType.Background));
                 this.btnPlaceShips.Enabled = true;
                 this.btnRandomize.Enabled = true;
                 this.btnReady.Enabled = true;

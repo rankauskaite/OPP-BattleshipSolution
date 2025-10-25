@@ -2,9 +2,12 @@
   "ExpandedNodes": [
     "",
     "\\BattleshipClient",
+    "\\BattleshipClient\\Models",
     "\\BattleshipClient\\Observers",
-    "\\BattleshipClient\\Services"
+    "\\BattleshipClient\\Services",
+    "\\BattleshipServer",
+    "\\BattleshipServer\\Builder",
+    "\\BattleshipServer\\NPC"
   ],
-  "SelectedNode": "\\BattleshipClient\\Observers\\GameEventManager.cs",
   "PreviewInSolutionExplorer": false
 }

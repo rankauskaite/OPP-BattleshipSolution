@@ -1,5 +1,7 @@
 using BattleshipClient.Models;
 using BattleshipClient.Observers;
+using BattleshipClient.Factory;
+using System.Windows.Forms;
 using System.Text.Json;
 
 namespace BattleshipClient.Services
@@ -7,6 +9,8 @@ namespace BattleshipClient.Services
     class MessageService
     {
         private readonly GameEventManager _eventManager = new();
+        private readonly SoundFactory _factory = new SoundFactory();
+
         public MessageService()
         {
             _eventManager.Attach(new SoundObserver());
@@ -19,7 +23,7 @@ namespace BattleshipClient.Services
             {
                 case "info":
                     if (dto.Payload.TryGetProperty("message", out var me))
-                        form.lblStatus.Text = me.GetString(); //tik i viena puse
+                        form.lblStatus.Text = me.GetString();
                     break;
 
                 case "startGame":
@@ -29,7 +33,7 @@ namespace BattleshipClient.Services
                     if (dto.Payload.TryGetProperty("current", out var cur))
                         form.isMyTurn = cur.GetString() == form.myId;
                     form.lblStatus.Text = $"Game started. Opponent: {dto.Payload.GetProperty("opponent").GetString()}. Your turn: {form.isMyTurn}";
-                    SoundFactory.Play(MusicType.GameStart);
+                    _factory.Play(_factory.factoryMethod(MusicType.GameStart));
                     break;
                 case "shipInfo":
                     if (dto.Payload.TryGetProperty("message", out var me1))
@@ -63,28 +67,49 @@ namespace BattleshipClient.Services
                     break;
 
                 case "shotResult":
-                    int x = dto.Payload.GetProperty("x").GetInt32();
-                    int y = dto.Payload.GetProperty("y").GetInt32();
-                    string res = dto.Payload.GetProperty("result").GetString();
-                    string shooter = dto.Payload.GetProperty("shooterId").GetString();
+                    {
+                        int x = dto.Payload.GetProperty("x").GetInt32();
+                        int y = dto.Payload.GetProperty("y").GetInt32();
+                        string res = dto.Payload.GetProperty("result").GetString();
+                        string shooter = dto.Payload.GetProperty("shooterId").GetString();
 
-                    bool isMyShot = shooter == form.myId;
-                    string shooterName = isMyShot ? form.myName : form.oppName;
+                        bool isMyShot = shooter == form.myId;
+                        string shooterName = isMyShot ? form.myName : form.oppName;
 
-                    if (shooter == form.myId)
-                        form.enemyBoard.SetCell(x, y, res == "hit" ? CellState.Hit : res == "whole_ship_down" ? CellState.Whole_ship_down : CellState.Miss);
-                    else
-                        form.ownBoard.SetCell(x, y, res == "hit" ? CellState.Hit : res == "whole_ship_down" ? CellState.Whole_ship_down : CellState.Miss);
+                        CellState newState = res switch
+                        {
+                            "hit" => CellState.Hit,
+                            "whole_ship_down" => CellState.Whole_ship_down,
+                            _ => CellState.Miss
+                        };
 
-                    form.lblStatus.Text = $"Shot result: {res} at {x},{y}";
-                    if (res == "hit")
-                        _eventManager.Notify("HIT", shooterName);
-                    else if (res == "whole_ship_down")
-                        _eventManager.Notify("EXPLOSION", shooterName);
-                    else
-                        _eventManager.Notify("MISS", shooterName);
+                        var board = isMyShot ? form.enemyBoard : form.ownBoard;
 
-                    break;
+                        var prevState = board.GetCell(x, y);
+
+                        var cmd = new BattleshipClient.Commands.ShotCommand(board, x, y, prevState, newState, shooterName);
+                        form.CommandManager.ExecuteCommand(cmd);
+
+                        form.lblStatus.Text = $"Shot result: {res} at {x},{y}";
+
+                        if (!isMyShot)
+                        {
+                            Ship targetShip = form.ownShips.FirstOrDefault(s =>
+                                s.X <= x && s.X + (s._direction == "H" ? s._length : 0) > x &&
+                                s.Y <= y && s.Y + (s._direction == "V" ? s._length : 0) > y);
+
+                            if (targetShip != null)
+                            {
+                                targetShip.RegisterShot(x, y);
+                            }
+                            else
+                            {
+                                _eventManager.Notify("MISS", shooterName);
+                            }
+                        }
+
+                        break;
+                    }
 
                 case "gameOver":
                     if (dto.Payload.TryGetProperty("winnerId", out var w))
@@ -94,8 +119,8 @@ namespace BattleshipClient.Services
                         form.lblStatus.Text = winner == form.myId ? "You WON! Game over." : "You lost. Game over.";
                         MessageBox.Show(form.lblStatus.Text, "Game Over");
                         _eventManager.Notify(winner == form.myId ? "WIN" : "LOSE", winnerName);
-                        //SoundFactory.Play(MusicType.GameEnd);
                         form.btnGameOver.Visible = true;
+                        form.btnReplay.Visible = true;
                         form.isMyTurn = false;
                     }
                     break;

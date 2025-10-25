@@ -78,11 +78,108 @@ namespace BattleshipServer
                     await gameManagerFacade.UseGameCopy(this, player);
                     break;
                 case "shot":
+<<<<<<< HEAD
                     await gameManagerFacade.HandleShot(this, player, dto);
                     break;
                 case "playBot":
                     await gameManagerFacade.HandlePlayBot(this, player, dto, _db);
                     break;
+=======
+                    if (dto.Payload.TryGetProperty("x", out var xe) && dto.Payload.TryGetProperty("y", out var ye))
+                        {
+                            // doubleBomb (kaip ir buvo)
+                            dto.Payload.TryGetProperty("doubleBomb", out var doubleBomb);
+                            bool isDoubleBomb = (doubleBomb.ValueKind == JsonValueKind.True) || (doubleBomb.ValueKind == JsonValueKind.False)
+                                                ? doubleBomb.GetBoolean()
+                                                : false;
+
+                            int x = xe.GetInt32();
+                            int y = ye.GetInt32();
+
+                            // NEW: power-up flag'ai
+                            dto.Payload.TryGetProperty("plusShape", out var plusEl);
+                            dto.Payload.TryGetProperty("xShape", out var xEl);
+                            dto.Payload.TryGetProperty("superDamage", out var superEl);
+                            bool plusShape = plusEl.ValueKind == JsonValueKind.True;
+                            bool xShape = xEl.ValueKind == JsonValueKind.True;
+                            bool superDamage = superEl.ValueKind == JsonValueKind.True;
+
+                            if (_playerToGame.TryGetValue(player.Id, out var g))
+                            {
+                                if (plusShape || xShape || superDamage)
+                                {
+                                    // power-up režimas
+                                    await g.ProcessCompositeShot(player.Id, x, y, isDoubleBomb, plusShape, xShape, superDamage);
+                                }
+                                else
+                                {
+                                    // senas vieno taško (arba doubleBomb) režimas
+                                    await g.ProcessShot(player.Id, x, y, isDoubleBomb);
+                                }
+                            }
+
+                            if (_botGames.TryGetValue(player.Id, out var bg))
+                            {
+                                await bg.bot.MaybePlayAsync();
+                            }
+                        }
+                    break; 
+                    case "playBot":
+                    {
+                        var ships = new List<ShipDto>();
+                        bool isStandart = true;
+
+                        if (dto.Payload.TryGetProperty("isStandartGame", out var gmVal) &&
+                            (gmVal.ValueKind == JsonValueKind.True || gmVal.ValueKind == JsonValueKind.False))
+                            isStandart = gmVal.GetBoolean();
+
+                        if (dto.Payload.TryGetProperty("ships", out var shEl))
+                        {
+                            foreach (var el in shEl.EnumerateArray())
+                            {
+                                ships.Add(new ShipDto {
+                                    X = el.GetProperty("x").GetInt32(),
+                                    Y = el.GetProperty("y").GetInt32(),
+                                    Len = el.GetProperty("len").GetInt32(),
+                                    Dir = el.GetProperty("dir").GetString()
+                                });
+                            }
+                        }
+
+                        // 1) Bot žaidėjas su NoopWebSocket
+                        var botSocket = new NoopWebSocket();
+                        var bot = new PlayerConnection(botSocket, this) { Name = "Robot" };
+
+                        // 2) Pasirenkam konkretų builder'į
+                        IGameSetupBuilder builder = isStandart
+                            ? new StandardGameBuilder()
+                            : new MiniGameBuilder();
+
+                        // 3) „surenkam“ žaidimą (fluent seka)
+                        var game = builder
+                            .CreateShell(player, bot, this, _db)
+                            .ConfigureBoard()
+                            .ConfigureFleets(ships, opponentRandom: true)
+                            .ConfigureNpc(g => {
+                                var selector = new RuleBasedSelector();
+                                return new BotOrchestrator(g, bot.Id, selector, "checkerboard");
+                            })
+                            .Build();
+
+                        // 4) Registracija ir BotOrchestrator užkabinimas GameManager'io žemėlapyje
+                        _games.Add(game);
+                        _playerToGame[player.Id] = game;
+
+                        var orch = builder.Orchestrator!;
+                        _botGames[player.Id] = (game, orch);
+
+                        // 5) Start
+                        await game.StartGame();
+
+                        Console.WriteLine($"[Manager] Player {player.Name} started BOT game (builder).");
+                        break;
+                    }
+>>>>>>> origin/main
                 default:
                     Console.WriteLine($"[Manager] Unknown message type: {dto.Type}");
                     break;

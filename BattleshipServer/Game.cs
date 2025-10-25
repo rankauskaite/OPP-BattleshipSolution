@@ -5,8 +5,14 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text.Json;
+<<<<<<< HEAD
 using System.Threading.Tasks;
 using BattleshipServer.GameFacade;
+=======
+using System.Threading.Tasks; 
+using BattleshipServer.PowerUps;
+
+>>>>>>> origin/main
 
 namespace BattleshipServer
 {
@@ -131,9 +137,118 @@ namespace BattleshipServer
             {
                 _manager.GameEnded(this);
             }
+        } 
+
+
+        // ...
+        public async Task ProcessCompositeShot(Guid shooterId, int x0, int y0, bool isDoubleBomb, bool plusShape, bool xShape, bool superDamage)
+        {
+            if (shooterId != CurrentPlayerId)
+            {
+                await GetPlayer(shooterId).SendAsync(new Models.MessageDto { Type="error", Payload=JsonDocument.Parse("{\"message\":\"Not your turn\"}").RootElement });
+                return;
+            }
+            if (_isGameOver)
+            {
+                await GetPlayer(shooterId).SendAsync(new Models.MessageDto { Type="error", Payload=JsonDocument.Parse("{\"message\":\"Game already finished\"}").RootElement });
+                return;
+            }
+
+            var shooter = GetPlayer(shooterId);
+            var target  = GetOpponent(shooterId);
+            var board   = target == Player1 ? _board1 : _board2;
+            var ships   = target == Player1 ? _ships1 : _ships2;
+
+            if (!plusShape && !xShape && !superDamage)
+            {
+                await ProcessShot(shooterId, x0, y0, isDoubleBomb);
+                return;
+            }
+
+            IShotPattern patt = new SingleCellPattern();
+            if (plusShape) patt = new PlusPatternDecorator(patt);
+            if (xShape)    patt = new XPatternDecorator(patt);
+            var cells = patt.GetCells(x0, y0, 10, 10).Distinct().ToList();
+
+            IShotEffect effect = superDamage ? new SuperDamageEffect() : new NoopEffect();
+
+            bool anyHit = false;
+            var sunkThisTurn = new HashSet<Game.Ship>(); // kad nekartotume „whole_ship_down“
+
+            foreach (var (x,y) in cells)
+            {
+                var (success, hit) = ProcessShot(x, y, board);   // tavo helperis, kuris nieko nesiunčia
+                if (!success) continue;
+
+                // 1) VISADA pirma nusiunčiam "hit"/"miss"
+                var resultStr = hit ? "hit" : "miss";
+                var shotPayload = JsonSerializer.SerializeToElement(new {
+                    x, y, result = resultStr, shooterId = shooterId.ToString(), targetId = target.Id.ToString()
+                });
+                await Player1.SendAsync(new Models.MessageDto { Type="shotResult", Payload=shotPayload });
+                await Player2.SendAsync(new Models.MessageDto { Type="shotResult", Payload=shotPayload });
+
+                if (hit)
+                {
+                    anyHit = true;
+
+                    // 2) taikom efektą (superDamage pažymės laivą nuskendusiu)
+                    _ = effect.AfterCellHit(x, y, board, ships);
+
+                    // 3) surandam laivą, kurį palietėm
+                    var hitShip = ships.FirstOrDefault(s =>
+                        (s.Horizontal && y == s.Y && x >= s.X && x < s.X + s.Len) ||
+                        (!s.Horizontal && x == s.X && y >= s.Y && y < s.Y + s.Len));
+
+                    // 4) jei dabar laivas nuskendęs -> išsiunčiam whole_ship_down visoms jo ląstelėms (kartą)
+                    if (hitShip != null && !sunkThisTurn.Contains(hitShip) && hitShip.IsSunk(board))
+                    {
+                        sunkThisTurn.Add(hitShip);
+                        for (int i = 0; i < hitShip.Len; i++)
+                        {
+                            int cx = hitShip.X + (hitShip.Horizontal ? i : 0);
+                            int cy = hitShip.Y + (hitShip.Horizontal ? 0 : i);
+
+                            var downPayload = JsonSerializer.SerializeToElement(new {
+                                x = cx, y = cy, result = "whole_ship_down",
+                                shooterId = shooterId.ToString(), targetId = target.Id.ToString()
+                            });
+                            await Player1.SendAsync(new Models.MessageDto { Type="shotResult", Payload=downPayload });
+                            await Player2.SendAsync(new Models.MessageDto { Type="shotResult", Payload=downPayload });
+                        }
+                    }
+                }
+
+                // 5) ar liko laivų?
+                bool anyLeft = ships.Any(s => !s.IsSunk(board));
+                if (!anyLeft)
+                {
+                    _isGameOver = true;
+                    var winner = shooterId.ToString();
+                    var goPayload = JsonSerializer.SerializeToElement(new { winnerId = winner });
+                    await Player1.SendAsync(new Models.MessageDto { Type="gameOver", Payload=goPayload });
+                    await Player2.SendAsync(new Models.MessageDto { Type="gameOver", Payload=goPayload });
+                    _manager.GameEnded(this);
+                    _db.SaveGame(Player1.Name ?? Player1.Id.ToString(), Player2.Name ?? Player2.Id.ToString(), shooterId.ToString());
+                    return;
+                }
+            }
+
+            // ėjimo kaita: pereina tik jei visi prašovė
+            if (!anyHit) CurrentPlayerId = target.Id;
+
+            var turnPayload = JsonSerializer.SerializeToElement(new { current = CurrentPlayerId.ToString() });
+            await Player1.SendAsync(new Models.MessageDto { Type="turn", Payload=turnPayload });
+            await Player2.SendAsync(new Models.MessageDto { Type="turn", Payload=turnPayload });
         }
 
+<<<<<<< HEAD
         public void InvokeShotResolved(Guid shooterId, int x, int y, bool hit, bool wholeDown, List<(int x, int y)> sunkCells)
+=======
+        //
+
+        private (bool, bool) ProcessShot(int x, int y, int[,] targetBoard)
+>>>>>>> origin/main
         {
             ShotResolved?.Invoke(shooterId, x, y, hit, wholeDown, sunkCells ?? new List<(int, int)>());
         }
@@ -170,7 +285,11 @@ namespace BattleshipServer
                 Dir = s.Horizontal ? "H" : "V"
             }).ToList();
             return shipsDto;
-        }
+        } 
+
+
+
+
 
         public class Ship
         {

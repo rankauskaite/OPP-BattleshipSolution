@@ -5,7 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text.Json;
-using System.Threading.Tasks; 
+using System.Threading.Tasks;
+using BattleshipServer.GameFacade;
+
 using BattleshipServer.PowerUps;
 
 
@@ -30,11 +32,12 @@ namespace BattleshipServer
         private readonly List<Ship> _ships2 = new();
         private readonly GameManager _manager;
         private readonly Database _db;
+        private readonly GameFacade.GameFacade gameFacade = new GameFacade.GameFacade();
 
         public bool IsReady => _ships1.Count > 0 && _ships2.Count > 0;
         public bool GameModesMatch => isStandartGame1 == isStandartGame2;
 
-        private bool _isGameOver = false; // <— nauja
+        private bool _isGameOver = false;
 
 
         public event Action<Guid, int, int, bool, bool, List<(int x, int y)>>? ShotResolved;
@@ -99,344 +102,54 @@ namespace BattleshipServer
 
         public async Task ProcessShot(Guid shooterId, int x, int y, bool isDoubleBomb)
         {
-            if (shooterId != CurrentPlayerId)
-            {
-                await GetPlayer(shooterId).SendAsync(new Models.MessageDto { Type = "error", Payload = JsonDocument.Parse("{\"message\":\"Not your turn\"}").RootElement });
-                return;
-            }
+            await gameFacade.HandleShot(this, shooterId, x, y, isDoubleBomb);
+        }
 
-            if (_isGameOver)
-            {
-                await GetPlayer(shooterId).SendAsync(new Models.MessageDto
-                {
-                    Type = "error",
-                    Payload = JsonDocument.Parse("{\"message\":\"Game already finished\"}").RootElement
-                });
-                return;
-            }
-
-            var shooter = GetPlayer(shooterId);
-            var target = GetOpponent(shooterId);
-            var targetBoard = target == Player1 ? _board1 : _board2;
-            var targetShips = target == Player1 ? _ships1 : _ships2;
-
-            bool hit = false;
-            bool success = false;
-            bool gameOver = false;
-
-            if (x < 0 || x >= 10 || y < 0 || y >= 10)
-            {
-                await shooter.SendAsync(new Models.MessageDto { Type = "error", Payload = JsonDocument.Parse("{\"message\":\"Invalid coords\"}").RootElement });
-                return;
-            }
-
-            if (isDoubleBomb)
-            {
-                int[] doubleBombNextCoors = GetDoubleBombCoords(targetBoard, x, y);
-                int x1 = doubleBombNextCoors[0];
-                int y1 = doubleBombNextCoors[1];
-                if (doubleBombNextCoors.Length == 2 && x1 >= 0 && y1 >= 0)
-                {
-                    (success, hit) = ProcessShot(x1, y1, targetBoard);
-                    if (!success)
-                    {
-                        await shooter.SendAsync(new Models.MessageDto { Type = "error", Payload = JsonDocument.Parse("{\"message\":\"Cell already shot\"}").RootElement });
-                        return;
-                    }
-                    var shotResult1 = JsonSerializer.SerializeToElement(new { x = x1, y = y1, result = hit ? "hit" : "miss", shooterId = shooterId.ToString(), targetId = target.Id.ToString() });
-                    await Player1.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult1 });
-                    await Player2.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult1 });
-
-                    ///////
-                    bool anyLeftAfterFirst = false;
-                    foreach (var s in targetShips)
-                    {
-                        if (!s.IsSunk(targetBoard))
-                        {
-                            anyLeftAfterFirst = true;
-                            break;
-                        }
-                    }
-                    if (!anyLeftAfterFirst)
-                    {
-                        _isGameOver = true;
-                        var winner = shooterId.ToString();
-                        var goPayload = JsonSerializer.SerializeToElement(new { winnerId = winner });
-                        await Player1.SendAsync(new Models.MessageDto { Type = "gameOver", Payload = goPayload });
-                        await Player2.SendAsync(new Models.MessageDto { Type = "gameOver", Payload = goPayload });
-                        _manager.GameEnded(this);
-                        _db.SaveGame(Player1.Name ?? Player1.Id.ToString(), Player2.Name ?? Player2.Id.ToString(), shooterId.ToString());
-                        return; // LABAI SVARBU: daugiau nebevykdom antro šūvio
-                    }
-                    /// 
-                }
-            }
-            (success, hit) = ProcessShot(x, y, targetBoard);
-            if (!success)
-            {
-                await shooter.SendAsync(new Models.MessageDto { Type = "error", Payload = JsonDocument.Parse("{\"message\":\"Cell already shot\"}").RootElement });
-                return;
-            }
-
-
-            bool anyLeft = false;
-            bool wholeDown = false;
-            List<(int x, int y)> sunkCells = null;
-            //sunkCells = new List<(int, int)>(); 
-            //sunkCells.Add((cx1, cy1));
-
-            foreach (var s in targetShips)
-            {
-                bool is_sunk = s.IsSunk(targetBoard);
-
-
-                bool containsCurrentShot =
-                    (s.Horizontal && (y == s.Y) && (x >= s.X) && (x < s.X + s.Len)) ||
-                    (!s.Horizontal && (x == s.X) && (y >= s.Y) && (y < s.Y + s.Len));
-                if (!is_sunk)
-                {
-                    anyLeft = true;
-                }
-                else
-                {
-                    s.setAsSunk(targetBoard);
-
-
-                    if (containsCurrentShot)
-                    {
-                        wholeDown = true;
-                        sunkCells = new List<(int, int)>();
-
-
-                        for (int i = 0; i < s.Len; i++)
-                        {
-                            int cx1 = s.X + (s.Horizontal ? i : 0);
-                            int cy1 = s.Y + (s.Horizontal ? 0 : i);
-                            if (cx1 < 0 || cx1 >= 10 || cy1 < 0 || cy1 >= 10) break;
-
-                            var updateBoard = JsonSerializer.SerializeToElement(new
-                            {
-                                x = cx1,
-                                y = cy1,
-                                result = "whole_ship_down",
-                                shooterId = shooterId.ToString(),
-                                targetId = target.Id.ToString()
-                            });
-                            await Player1.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = updateBoard });
-                            await Player2.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = updateBoard });
-
-                            sunkCells.Add((cx1, cy1));
-                        }
-                    }
-
-                }
-            }
-            if (!anyLeft) gameOver = true;
-
-            var shotResult = JsonSerializer.SerializeToElement(new { x, y, result = hit && !wholeDown ? "hit" : hit && wholeDown ? "whole_ship_down" : "miss", shooterId = shooterId.ToString(), targetId = target.Id.ToString() });
-            await Player1.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult });
-            await Player2.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult });
-
-            ShotResolved?.Invoke(shooterId, x, y, hit, wholeDown, sunkCells ?? new List<(int, int)>());
-
-
-            if (gameOver)
-            {
-                var winner = shooterId.ToString();
-                var goPayload = JsonSerializer.SerializeToElement(new { winnerId = winner });
-                await Player1.SendAsync(new Models.MessageDto { Type = "gameOver", Payload = goPayload });
-                await Player2.SendAsync(new Models.MessageDto { Type = "gameOver", Payload = goPayload });
-
-                _isGameOver = true; // <— PRIDĖTA
-                _manager.GameEnded(this);
-                _db.SaveGame(Player1.Name ?? Player1.Id.ToString(), Player2.Name ?? Player2.Id.ToString(), shooterId.ToString());
-                Console.WriteLine($"[Game] Game over. Winner: {winner}");
-            }
-            else
-            {
-                // change turn only on miss
-                if (!hit)
-                {
-                    CurrentPlayerId = target.Id;
-                }
-                var turnPayload = JsonSerializer.SerializeToElement(new { current = CurrentPlayerId.ToString() });
-                await Player1.SendAsync(new Models.MessageDto { Type = "turn", Payload = turnPayload });
-                await Player2.SendAsync(new Models.MessageDto { Type = "turn", Payload = turnPayload });
-            }
-        } 
-
-
-        // ...
         public async Task ProcessCompositeShot(Guid shooterId, int x0, int y0, bool isDoubleBomb, bool plusShape, bool xShape, bool superDamage)
         {
-            if (shooterId != CurrentPlayerId)
-            {
-                await GetPlayer(shooterId).SendAsync(new Models.MessageDto { Type="error", Payload=JsonDocument.Parse("{\"message\":\"Not your turn\"}").RootElement });
-                return;
-            }
-            if (_isGameOver)
-            {
-                await GetPlayer(shooterId).SendAsync(new Models.MessageDto { Type="error", Payload=JsonDocument.Parse("{\"message\":\"Game already finished\"}").RootElement });
-                return;
-            }
-
-            var shooter = GetPlayer(shooterId);
-            var target  = GetOpponent(shooterId);
-            var board   = target == Player1 ? _board1 : _board2;
-            var ships   = target == Player1 ? _ships1 : _ships2;
-
-            if (!plusShape && !xShape && !superDamage)
-            {
-                await ProcessShot(shooterId, x0, y0, isDoubleBomb);
-                return;
-            }
-
-            IShotPattern patt = new SingleCellPattern();
-            if (plusShape) patt = new PlusPatternDecorator(patt);
-            if (xShape)    patt = new XPatternDecorator(patt);
-            var cells = patt.GetCells(x0, y0, 10, 10).Distinct().ToList();
-
-            IShotEffect effect = superDamage ? new SuperDamageEffect() : new NoopEffect();
-
-            bool anyHit = false;
-            var sunkThisTurn = new HashSet<Game.Ship>(); // kad nekartotume „whole_ship_down“
-
-            foreach (var (x,y) in cells)
-            {
-                var (success, hit) = ProcessShot(x, y, board);   // tavo helperis, kuris nieko nesiunčia
-                if (!success) continue;
-
-                // 1) VISADA pirma nusiunčiam "hit"/"miss"
-                var resultStr = hit ? "hit" : "miss";
-                var shotPayload = JsonSerializer.SerializeToElement(new {
-                    x, y, result = resultStr, shooterId = shooterId.ToString(), targetId = target.Id.ToString()
-                });
-                await Player1.SendAsync(new Models.MessageDto { Type="shotResult", Payload=shotPayload });
-                await Player2.SendAsync(new Models.MessageDto { Type="shotResult", Payload=shotPayload });
-
-                if (hit)
-                {
-                    anyHit = true;
-
-                    // 2) taikom efektą (superDamage pažymės laivą nuskendusiu)
-                    _ = effect.AfterCellHit(x, y, board, ships);
-
-                    // 3) surandam laivą, kurį palietėm
-                    var hitShip = ships.FirstOrDefault(s =>
-                        (s.Horizontal && y == s.Y && x >= s.X && x < s.X + s.Len) ||
-                        (!s.Horizontal && x == s.X && y >= s.Y && y < s.Y + s.Len));
-
-                    // 4) jei dabar laivas nuskendęs -> išsiunčiam whole_ship_down visoms jo ląstelėms (kartą)
-                    if (hitShip != null && !sunkThisTurn.Contains(hitShip) && hitShip.IsSunk(board))
-                    {
-                        sunkThisTurn.Add(hitShip);
-                        for (int i = 0; i < hitShip.Len; i++)
-                        {
-                            int cx = hitShip.X + (hitShip.Horizontal ? i : 0);
-                            int cy = hitShip.Y + (hitShip.Horizontal ? 0 : i);
-
-                            var downPayload = JsonSerializer.SerializeToElement(new {
-                                x = cx, y = cy, result = "whole_ship_down",
-                                shooterId = shooterId.ToString(), targetId = target.Id.ToString()
-                            });
-                            await Player1.SendAsync(new Models.MessageDto { Type="shotResult", Payload=downPayload });
-                            await Player2.SendAsync(new Models.MessageDto { Type="shotResult", Payload=downPayload });
-                        }
-                    }
-                }
-
-                // 5) ar liko laivų?
-                bool anyLeft = ships.Any(s => !s.IsSunk(board));
-                if (!anyLeft)
-                {
-                    _isGameOver = true;
-                    var winner = shooterId.ToString();
-                    var goPayload = JsonSerializer.SerializeToElement(new { winnerId = winner });
-                    await Player1.SendAsync(new Models.MessageDto { Type="gameOver", Payload=goPayload });
-                    await Player2.SendAsync(new Models.MessageDto { Type="gameOver", Payload=goPayload });
-                    _manager.GameEnded(this);
-                    _db.SaveGame(Player1.Name ?? Player1.Id.ToString(), Player2.Name ?? Player2.Id.ToString(), shooterId.ToString());
-                    return;
-                }
-            }
-
-            // ėjimo kaita: pereina tik jei visi prašovė
-            if (!anyHit) CurrentPlayerId = target.Id;
-
-            var turnPayload = JsonSerializer.SerializeToElement(new { current = CurrentPlayerId.ToString() });
-            await Player1.SendAsync(new Models.MessageDto { Type="turn", Payload=turnPayload });
-            await Player2.SendAsync(new Models.MessageDto { Type="turn", Payload=turnPayload });
+            await gameFacade.HandleCompositeShot(this, shooterId, x0, y0, isDoubleBomb, plusShape, xShape, superDamage);
         }
 
-        //
-
-        private (bool, bool) ProcessShot(int x, int y, int[,] targetBoard)
+        public void SetCurrentPlayer(Guid playerId)
         {
-            bool success = true;
-            bool hit = false;
-            if (targetBoard[y, x] == 1)
-            {
-                targetBoard[y, x] = 3; // hit
-                hit = true;
-            }
-            else if (targetBoard[y, x] == 0)
-            {
-                targetBoard[y, x] = 2; // miss
-                hit = false;
-            }
-            else
-            {
-                // already shot here
-                success = false;
-            }
-
-            return (success, hit);
+            if (playerId != Player1.Id && playerId != Player2.Id)
+                throw new ArgumentException("Invalid playerId");
+            CurrentPlayerId = playerId;
         }
 
-        private int[] GetDoubleBombCoords(int[,] targetBoard, int x, int y)
+        public (int[,], List<Ship>) GetBoard1AndShips()
         {
-            int[] res = new int[4];
-            List<int[]> possible_moves = new List<int[]>();
-
-            if (y > 0 && (targetBoard[y - 1, x] == 0 || targetBoard[y - 1, x] == 1))
-            {
-                // second bomb drop is above current shot
-                possible_moves.Add([x, y - 1,]);
-            }
-
-            if (y < targetBoard.GetLength(0) - 1 && (targetBoard[y + 1, x] == 0 || targetBoard[y + 1, x] == 1))
-            {
-                // second bobm drop is below current shot
-                possible_moves.Add([x, y + 1]);
-            }
-
-            if (x > 0 && (targetBoard[y, x - 1] == 0 || targetBoard[y, x - 1] == 1))
-            {
-                // second bomb drop is to the left of the current shot
-                possible_moves.Add([x - 1, y]);
-            }
-
-            if (x < targetBoard.GetLength(1) - 1)
-            {
-                // second bomb drop is to the right of the current shot
-                possible_moves.Add([x + 1, y]);
-            }
-
-            if (possible_moves.Count == 0)
-            {
-                return [-1, -1];
-            }
-            if (possible_moves.Count == 1)
-            {
-                return possible_moves[0];
-            }
-            Random rnd = new Random();
-            int idx = rnd.Next(0, possible_moves.Count);
-            return possible_moves[idx];
+            return (_board1, _ships1);
         }
 
-        private PlayerConnection GetPlayer(Guid id) => id == Player1.Id ? Player1 : Player2;
-        private PlayerConnection GetOpponent(Guid id) => id == Player1.Id ? Player2 : Player1;
+        public (int[,], List<Ship>) GetBoard2AndShips()
+        {
+            return (_board2, _ships2);
+        }
+
+        public bool GetIsGameOver()
+        {
+            return _isGameOver;
+        }
+
+        public void SetIsGameOver(bool val)
+        {
+            _isGameOver = val;
+            if (val)
+            {
+                _manager.GameEnded(this);
+            }
+        }
+
+        public void InvokeShotResolved(Guid shooterId, int x, int y, bool hit, bool wholeDown, List<(int x, int y)> sunkCells)
+        {
+            ShotResolved?.Invoke(shooterId, x, y, hit, wholeDown, sunkCells ?? new List<(int, int)>());
+        }
+
+        public void SaveGameToDB(Guid shooterId)
+        {
+            _db.SaveGame(Player1.Name ?? Player1.Id.ToString(), Player2.Name ?? Player2.Id.ToString(), shooterId.ToString());
+        }
 
         public Game Clone()
         {

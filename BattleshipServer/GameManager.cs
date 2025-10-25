@@ -9,6 +9,7 @@ using System.Xml.Linq;
 using BattleshipServer.Npc;
 using System.Net.WebSockets; 
 using BattleshipServer.Builders;
+using BattleshipServer.Domain;
 
 
 namespace BattleshipServer
@@ -21,184 +22,67 @@ namespace BattleshipServer
         private readonly Database _db = new Database("battleship.db"); 
         private readonly ConcurrentDictionary<Guid, (Game game, BotOrchestrator bot)> _botGames = new();
         private readonly Dictionary<Guid, Game> copiedGames = new();
+        private readonly GameManagerFacade.GameManagerFacade gameManagerFacade = new GameManagerFacade.GameManagerFacade();
 
+        public void AddToWaitingQueue(PlayerConnection player)
+        {
+            _waiting.Enqueue(player);
+        }
+
+        public Game? GetPlayersGame(Guid playerId)
+        {
+            if (_playerToGame.TryGetValue(playerId, out var game))
+            {
+                return game;
+            }
+            return null;
+        }
+
+        public (Game? game, BotOrchestrator? bot) GetBotGame(Guid playerId)
+        {
+            if (_botGames.TryGetValue(playerId, out var bg))
+            {
+                return bg;
+            }
+            return (null, null);
+        }
+
+        public void AddGame(Game game, Guid playerId)
+        {
+            _games.Add(game);
+            _playerToGame[playerId] = game;
+        }
+
+        public void AddGame(Game game, Guid playerId, BotOrchestrator orchestrator)
+        {
+            this.AddGame(game, playerId);
+            _botGames[playerId] = (game, orchestrator);
+        }
 
         public async Task HandleMessageAsync(PlayerConnection player, MessageDto dto)
         {
             switch (dto.Type)
             {
                 case "register":
-                    if (dto.Payload.TryGetProperty("playerName", out var nmElem))
-                    {
-                        player.Name = nmElem.GetString();
-                    }
-                    _waiting.Enqueue(player);
-                    Console.WriteLine($"[Manager] Player registered: {player.Name} ({player.Id})");
-                    await player.SendAsync(new MessageDto { Type = "register", Payload = JsonDocument.Parse("{\"message\":\"registered\"}").RootElement });
+                    await gameManagerFacade.RegisterPlayerAsync(this, player, dto);
                     TryPairPlayers();
                     break;
 
                 case "ready":
-                    if (_playerToGame.TryGetValue(player.Id, out var gReady))
-                    {
-                        // extract ships
-                        var ships = new List<ShipDto>();
-                        if (dto.Payload.TryGetProperty("isStandartGame", out JsonElement element))
-                        {
-                            if (element.ValueKind == JsonValueKind.True || element.ValueKind == JsonValueKind.False)
-                            {
-                                bool isStandartGame = element.GetBoolean();
-                                gReady.SetGameMode(player.Id, isStandartGame);
-                            }
-                        }
-                        if (dto.Payload.TryGetProperty("ships", out var shipsElem))
-                        {
-                            foreach (var el in shipsElem.EnumerateArray())
-                            {
-                                ships.Add(new ShipDto
-                                {
-                                    X = el.GetProperty("x").GetInt32(),
-                                    Y = el.GetProperty("y").GetInt32(),
-                                    Len = el.GetProperty("len").GetInt32(),
-                                    Dir = el.GetProperty("dir").GetString()
-                                });
-                            }
-                        }
-
-                        gReady.PlaceShips(player.Id, ships);
-                        Console.WriteLine($"[Manager] Player {player.Name} placed {ships.Count} ships.");
-                        if (gReady.IsReady && gReady.GameModesMatch)
-                        {
-                            await gReady.StartGame();
-                        } else if (!gReady.GameModesMatch)
-                        {
-                            Console.WriteLine("Game mode of players do not match! Try again");
-                        }
-                    }
-                    else
-                    {
-                        Console.WriteLine("[Manager] Ready received but player not in a game yet.");
-                    }
+                    await gameManagerFacade.MarkPlayerAsReady(this, player, dto);
                     break;
                 case "copyGame":
-                    var payload = JsonSerializer.SerializeToElement(new { message = "No game to save" });
-                    if (_playerToGame.TryGetValue(player.Id, out var currentGame))
-                    {
-                        Console.WriteLine($"[Manager] Copying game for player {player.Name}...");
-                        var clonedGame = currentGame.Clone();
-                        this.StoreGameCopy(player.Id, clonedGame);
-                        payload = JsonSerializer.SerializeToElement(new { message = $"Game successfully copied" });
-                    }
-                    await player.SendAsync(new MessageDto { Type = "info", Payload = payload });
+                    await gameManagerFacade.CopyGame(this, player);
                     break;
                 case "useGameCopy":
-                    var gameCopy = this.GetCopiedGame(player.Id);
-                    var payload1 = JsonSerializer.SerializeToElement(new { message = $"No copied game found for player {player.Name}." });
-                    if (gameCopy != null)
-                    {
-                        payload1 = JsonSerializer.SerializeToElement(new {
-                            message = $"Restoring game for player {player.Name} from copy...",
-                            ships = gameCopy.GetPlayerShips(player.Id)
-                        });
-
-                    }
-                    await player.SendAsync(new MessageDto { Type = "shipInfo", Payload = payload1 });
+                    await gameManagerFacade.UseGameCopy(this, player);
                     break;
                 case "shot":
-                    if (dto.Payload.TryGetProperty("x", out var xe) && dto.Payload.TryGetProperty("y", out var ye))
-                        {
-                            // doubleBomb (kaip ir buvo)
-                            dto.Payload.TryGetProperty("doubleBomb", out var doubleBomb);
-                            bool isDoubleBomb = (doubleBomb.ValueKind == JsonValueKind.True) || (doubleBomb.ValueKind == JsonValueKind.False)
-                                                ? doubleBomb.GetBoolean()
-                                                : false;
-
-                            int x = xe.GetInt32();
-                            int y = ye.GetInt32();
-
-                            // NEW: power-up flag'ai
-                            dto.Payload.TryGetProperty("plusShape", out var plusEl);
-                            dto.Payload.TryGetProperty("xShape", out var xEl);
-                            dto.Payload.TryGetProperty("superDamage", out var superEl);
-                            bool plusShape = plusEl.ValueKind == JsonValueKind.True;
-                            bool xShape = xEl.ValueKind == JsonValueKind.True;
-                            bool superDamage = superEl.ValueKind == JsonValueKind.True;
-
-                            if (_playerToGame.TryGetValue(player.Id, out var g))
-                            {
-                                if (plusShape || xShape || superDamage)
-                                {
-                                    // power-up režimas
-                                    await g.ProcessCompositeShot(player.Id, x, y, isDoubleBomb, plusShape, xShape, superDamage);
-                                }
-                                else
-                                {
-                                    // senas vieno taško (arba doubleBomb) režimas
-                                    await g.ProcessShot(player.Id, x, y, isDoubleBomb);
-                                }
-                            }
-
-                            if (_botGames.TryGetValue(player.Id, out var bg))
-                            {
-                                await bg.bot.MaybePlayAsync();
-                            }
-                        }
-                    break; 
-                    case "playBot":
-                    {
-                        var ships = new List<ShipDto>();
-                        bool isStandart = true;
-
-                        if (dto.Payload.TryGetProperty("isStandartGame", out var gmVal) &&
-                            (gmVal.ValueKind == JsonValueKind.True || gmVal.ValueKind == JsonValueKind.False))
-                            isStandart = gmVal.GetBoolean();
-
-                        if (dto.Payload.TryGetProperty("ships", out var shEl))
-                        {
-                            foreach (var el in shEl.EnumerateArray())
-                            {
-                                ships.Add(new ShipDto {
-                                    X = el.GetProperty("x").GetInt32(),
-                                    Y = el.GetProperty("y").GetInt32(),
-                                    Len = el.GetProperty("len").GetInt32(),
-                                    Dir = el.GetProperty("dir").GetString()
-                                });
-                            }
-                        }
-
-                        // 1) Bot žaidėjas su NoopWebSocket
-                        var botSocket = new NoopWebSocket();
-                        var bot = new PlayerConnection(botSocket, this) { Name = "Robot" };
-
-                        // 2) Pasirenkam konkretų builder'į
-                        IGameSetupBuilder builder = isStandart
-                            ? new StandardGameBuilder()
-                            : new MiniGameBuilder();
-
-                        // 3) „surenkam“ žaidimą (fluent seka)
-                        var game = builder
-                            .CreateShell(player, bot, this, _db)
-                            .ConfigureBoard()
-                            .ConfigureFleets(ships, opponentRandom: true)
-                            .ConfigureNpc(g => {
-                                var selector = new RuleBasedSelector();
-                                return new BotOrchestrator(g, bot.Id, selector, "checkerboard");
-                            })
-                            .Build();
-
-                        // 4) Registracija ir BotOrchestrator užkabinimas GameManager'io žemėlapyje
-                        _games.Add(game);
-                        _playerToGame[player.Id] = game;
-
-                        var orch = builder.Orchestrator!;
-                        _botGames[player.Id] = (game, orch);
-
-                        // 5) Start
-                        await game.StartGame();
-
-                        Console.WriteLine($"[Manager] Player {player.Name} started BOT game (builder).");
-                        break;
-                    }
+                    await gameManagerFacade.HandleShot(this, player, dto);
+                    break;
+                case "playBot":
+                    gameManagerFacade.HandlePlayBot(this, player, dto, _db);
+                    break;
                 default:
                     Console.WriteLine($"[Manager] Unknown message type: {dto.Type}");
                     break;
@@ -236,7 +120,7 @@ namespace BattleshipServer
             Console.WriteLine("[Manager] Game removed.");
         }
 
-        private void StoreGameCopy(Guid playerId, Game game)
+        public void StoreGameCopy(Guid playerId, Game game)
         {
             copiedGames[playerId] = game;
         }

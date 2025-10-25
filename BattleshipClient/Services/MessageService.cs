@@ -1,4 +1,4 @@
-﻿using BattleshipClient.Models;
+using BattleshipClient.Models;
 using BattleshipClient.Observers;
 using BattleshipClient.Factory;
 using System.Windows.Forms;

@@ -98,7 +98,8 @@ namespace BattleshipServer.GameFacade
             if (xShape) patt = new XPatternDecorator(patt);
             var cells = patt.GetCells(x0, y0, 10, 10).Distinct().ToList();
 
-            IShotEffect effect = superDamage ? new SuperDamageEffect() : new NoopEffect();
+            IShotEffect effect = new NoopEffect();
+            if (superDamage) effect = new SuperDamageDecorator(effect);
 
             lastShootHit = false;
             var sunkThisTurn = new HashSet<Game.Ship>(); // kad nekartotume „whole_ship_down“

@@ -108,7 +108,7 @@ namespace BattleshipServer.GameManagerFacade
             }
         }
 
-        public async Task HandlePlayBot(GameManager manager, PlayerConnection player, MessageDto dto, Database db)
+        public void HandlePlayBot(GameManager manager, PlayerConnection player, MessageDto dto, Database db)
         {
             bool isStandart = messageDtoService.GetIsStandartGame(dto);
             List<ShipDto> ships = messageDtoService.GetShipsFromDto(dto);

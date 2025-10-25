@@ -35,9 +35,13 @@ namespace BattleshipClient
         private Button btnPrev;
         private Button btnNext;
         public Button btnReplay;
-        private bool isReplayMode = false;
+        private bool isReplayMode = false; 
+        private Button btnPlus, btnX, btnSuper;
+        private bool plusActive = false, xActive = false, superActive = false;
+        public NetworkClient net { get; private set; } = new NetworkClient(); 
 
-        public NetworkClient net { get; private set; } = new NetworkClient();
+        private FlowLayoutPanel topBar;
+
 
         // state
         public List<ShipDto> myShips { get; private set; } = new List<ShipDto>();
@@ -111,7 +115,19 @@ namespace BattleshipClient
             btnUseGameCopy = new Button { Text = "Use saved placement", Location = new Point(840, 44), AutoSize = true, Visible = true };
             btnUseGameCopy.Click += BtnUseGameCopy_Click;
 
-            btnGameOver = new Button { Text = "Game Over", Location = new Point(400, 44), Width = 100, Height = 30, Visible = false };
+            btnGameOver = new Button { Text = "Game Over", Location = new Point(400, 44), Width = 100, Height = 30, Visible = false }; 
+
+
+            btnPlus  = new Button { Text = "+ Shot",  Location = new Point(560, 120), Width = 80, Height = 28 };
+            btnX     = new Button { Text = "X Shot",  Location = new Point(645, 120), Width = 80, Height = 28 };
+            btnSuper = new Button { Text = "Super",   Location = new Point(730, 120), Width = 80, Height = 28 };
+
+            btnPlus.Click  += (s,e)=> { plusActive = !plusActive; btnPlus.BackColor  = plusActive ? Color.LightGreen : SystemColors.Control; };
+            btnX.Click     += (s,e)=> { xActive    = !xActive;    btnX.BackColor     = xActive    ? Color.LightGreen : SystemColors.Control; };
+            btnSuper.Click += (s,e)=> { superActive= !superActive;btnSuper.BackColor = superActive? Color.LightGreen : SystemColors.Control; };
+
+            this.Controls.AddRange(new Control[]{ btnPlus, btnX, btnSuper });
+
 
             lblStatus = new Label { Text = "Not connected", Location = new Point(10, 40), AutoSize = true };
             lblPowerUpInfo = new Label { Location = new Point(10, 60), AutoSize = true, Visible = false };
@@ -134,9 +150,22 @@ namespace BattleshipClient
                 l1, txtServer, l2, txtName,
                 btnConnect, btnRandomize, btnPlaceShips, radioMiniGame, radioStandartGame, btnReady, btnSaveShipPlacement, btnUseGameCopy, btnDoubleBombPowerUp, btnGameOver,
                 lblStatus, lblPowerUpInfo, ownBoard, enemyBoard
-            });
+            }); 
 
-            this.Controls.Add(btnPlayBot);
+            topBar = new FlowLayoutPanel {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Padding = new Padding(600, 80, 90, 20),
+                WrapContents = false
+            };
+            this.Controls.Add(topBar);
+
+            topBar.Controls.Add(btnPlayBot); 
+            topBar.Controls.Add(btnPlus);
+            topBar.Controls.Add(btnX);
+            topBar.Controls.Add(btnSuper);
+            topBar.Controls.Add(btnDoubleBombPowerUp);
 
             btnReady.Enabled = false;
             _factory.Play(_factory.factoryMethod(MusicType.Background));
@@ -247,7 +276,16 @@ namespace BattleshipClient
         {
             if (!this.isMyTurn) { this.lblStatus.Text = "Not your turn."; return; }
             this.lblStatus.Text = $"Firing at {p.X},{p.Y}...";
-            var shot = new { type = "shot", payload = new { x = p.X, y = p.Y, doubleBomb = this.doubleBombActive } };
+            var shot = new {
+                type = "shot",
+                payload = new {
+                    x = p.X, y = p.Y,
+                    doubleBomb = this.doubleBombActive,  // likusi logika kaip buvo
+                    plusShape = this.plusActive,
+                    xShape = this.xActive,
+                    superDamage = this.superActive
+                }
+            };
             if (this.doubleBombActive)
             {
                 this.doubleBombActive = false;
@@ -347,6 +385,9 @@ namespace BattleshipClient
             radioMiniGame.Enabled = false;
             radioStandartGame.Enabled = false;
             lblPowerUpInfo.Visible = true;
+            this.btnPlus.Visible = true;
+            this.btnX.Visible = true;
+            this.btnSuper.Visible = true;
 
             // (nebūtina, bet jei nori – kopija iš BtnReady_Click: įjungia Double Bomb pagal factory)
             if (factory.GetPowerups().TryGetValue("DoubleBomb", out int doubleBombsCount))

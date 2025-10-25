@@ -13,18 +13,14 @@ namespace BattleshipServer.GameFacade
     {
         private readonly SendMessageService messageService;
         private readonly PlayerService playerService;
-        private readonly ShootingService shootingService;
+        private readonly ShotService shotService;
         private readonly ShipService shipService;
-        private readonly GameManager manager;
-        private readonly Database db;
 
-        public GameFacade(GameManager _manager, Database _db) {
+        public GameFacade() {
             messageService = new SendMessageService();
             playerService = new PlayerService();
-            shootingService = new ShootingService(messageService, playerService);
-            shipService = new ShipService(playerService, messageService, shootingService);
-            manager = _manager;
-            db = _db;
+            shotService = new ShotService(messageService, playerService);
+            shipService = new ShipService(playerService, messageService, shotService);
         }
 
         public async Task HandleShot(Game game, Guid shooterId, int x, int y, bool isDoubleBomb)
@@ -42,24 +38,23 @@ namespace BattleshipServer.GameFacade
             }
 
 
-            shootingService.ProcessShot(game, shooterId, x, y, isDoubleBomb, manager, db);
+            shotService.ProcessShot(game, shooterId, x, y, isDoubleBomb);
 
 
             await shipService.HandleSunkShipsAsync(shooterId, game, x, y);
 
-            if (shootingService.gameOver)
+            if (shotService.gameOver)
             {
                 await messageService.SendGameOverAsync(game.Player1, game.Player2, shooterId);
 
                 game.SetIsGameOver(true);
-                manager.GameEnded(game);
-                db.SaveGame(playerService.GetPLayerName(game.Player1), playerService.GetPLayerName(game.Player2), shooterId.ToString());
+                game.SaveGameToDB(shooterId);
                 Console.WriteLine($"[Game] Game over. Winner: {shooterId.ToString()}");
             }
             else
             {
                 // change turn only on miss
-                if (!shootingService.lastShootHit)
+                if (!shotService.lastShootHit)
                 {
                     var target = playerService.GetOpponent(shooterId, game);
                     game.SetCurrentPlayer(target.Id);

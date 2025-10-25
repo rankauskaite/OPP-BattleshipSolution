@@ -10,13 +10,13 @@ namespace BattleshipServer.GameFacade
     {
         private readonly PlayerService playerService;
         private readonly SendMessageService messageService;
-        private readonly ShootingService shootingService;
+        private readonly ShotService shotService;
 
-        public ShipService(PlayerService playerService, SendMessageService messageService, ShootingService shootingService)
+        public ShipService(PlayerService playerService, SendMessageService messageService, ShotService shotService)
         {
             this.playerService = playerService;
             this.messageService = messageService;
-            this.shootingService = shootingService;
+            this.shotService = shotService;
         }
 
         public async Task HandleSunkShipsAsync(Guid shooterId, Game game, int x, int y)
@@ -51,9 +51,9 @@ namespace BattleshipServer.GameFacade
 
             if (!anyLeft)
             {
-                shootingService.gameOver = true;
+                shotService.gameOver = true;
             }
-            bool hit = shootingService.lastShootHit;
+            bool hit = shotService.lastShootHit;
             await messageService.SendShotInfo(game.Player1, game.Player2, shooterId, target, x, y, hit, wholeDown);
             game.InvokeShotResolved(shooterId, x, y, hit, wholeDown, sunkCells);
         }

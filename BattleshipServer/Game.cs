@@ -29,7 +29,7 @@ namespace BattleshipServer
         private readonly List<Ship> _ships2 = new();
         private readonly GameManager _manager;
         private readonly Database _db;
-        private readonly GameFacade.GameFacade gameFacade;
+        private readonly GameFacade.GameFacade gameFacade = new GameFacade.GameFacade();
 
         public bool IsReady => _ships1.Count > 0 && _ships2.Count > 0;
         public bool GameModesMatch => isStandartGame1 == isStandartGame2;
@@ -46,7 +46,6 @@ namespace BattleshipServer
             Player2 = p2;
             _manager = manager;
             _db = db;
-            gameFacade = new GameFacade.GameFacade(manager, db);
         }
 
         public void PlaceShips(Guid playerId, List<ShipDto> shipsDto)
@@ -128,11 +127,20 @@ namespace BattleshipServer
         public void SetIsGameOver(bool val)
         {
             _isGameOver = val;
+            if (val)
+            {
+                _manager.GameEnded(this);
+            }
         }
 
         public void InvokeShotResolved(Guid shooterId, int x, int y, bool hit, bool wholeDown, List<(int x, int y)> sunkCells)
         {
             ShotResolved?.Invoke(shooterId, x, y, hit, wholeDown, sunkCells ?? new List<(int, int)>());
+        }
+
+        public void SaveGameToDB(Guid shooterId)
+        {
+            _db.SaveGame(Player1.Name ?? Player1.Id.ToString(), Player2.Name ?? Player2.Id.ToString(), shooterId.ToString());
         }
 
         public Game Clone()

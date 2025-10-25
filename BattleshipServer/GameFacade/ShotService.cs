@@ -9,20 +9,20 @@ using static BattleshipServer.Game;
 
 namespace BattleshipServer.GameFacade
 {
-    public class ShootingService
+    public class ShotService
     {
         private readonly PlayerService playerService;
         private readonly SendMessageService messageService;
         public bool lastShootHit { get; private set; } = false;
         public bool gameOver { get; set; } = false;
 
-        public ShootingService(SendMessageService sendMessageService, PlayerService playerService)
+        public ShotService(SendMessageService sendMessageService, PlayerService playerService)
         {
             this.playerService = playerService;
             this.messageService = sendMessageService;
         }
 
-        public async void ProcessShot(Game game, Guid shooterId, int x, int y, bool isDoubleBomb, GameManager manager, Database db)
+        public async void ProcessShot(Game game, Guid shooterId, int x, int y, bool isDoubleBomb)
         {
             var shooter = playerService.GetPlayer(shooterId, game);
             var target = playerService.GetOpponent(shooterId, game);
@@ -65,8 +65,7 @@ namespace BattleshipServer.GameFacade
                     {
                         game.SetIsGameOver(true);
                         await messageService.SendGameOverAsync(game.Player1, game.Player2, shooterId);
-                        manager.GameEnded(game);
-                        db.SaveGame(playerService.GetPLayerName(game.Player1), playerService.GetPLayerName(game.Player2), shooterId.ToString());
+                        game.SaveGameToDB(shooterId);
                         return;
                     }
                 }

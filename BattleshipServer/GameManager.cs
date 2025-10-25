@@ -106,26 +106,43 @@ namespace BattleshipServer
                     break;
                 case "shot":
                     if (dto.Payload.TryGetProperty("x", out var xe) && dto.Payload.TryGetProperty("y", out var ye))
-                    {
-                        dto.Payload.TryGetProperty("doubleBomb", out var doubleBomb);
-                        bool isDoubleBomb = false;
-                        if (doubleBomb.ValueKind == JsonValueKind.True || doubleBomb.ValueKind == JsonValueKind.False)
                         {
-                            isDoubleBomb = doubleBomb.GetBoolean();
-                        }
-                        int x = xe.GetInt32();
-                        int y = ye.GetInt32();
+                            // doubleBomb (kaip ir buvo)
+                            dto.Payload.TryGetProperty("doubleBomb", out var doubleBomb);
+                            bool isDoubleBomb = (doubleBomb.ValueKind == JsonValueKind.True) || (doubleBomb.ValueKind == JsonValueKind.False)
+                                                ? doubleBomb.GetBoolean()
+                                                : false;
 
-                        if (_playerToGame.TryGetValue(player.Id, out var gShot))
-                        {
-                            await gShot.ProcessShot(player.Id, x, y, isDoubleBomb);
-                        } 
-                        if (_botGames.TryGetValue(player.Id, out var bg))
-                        {
-                            await bg.bot.MaybePlayAsync();
-                        }
+                            int x = xe.GetInt32();
+                            int y = ye.GetInt32();
 
-                    }
+                            // NEW: power-up flag'ai
+                            dto.Payload.TryGetProperty("plusShape", out var plusEl);
+                            dto.Payload.TryGetProperty("xShape", out var xEl);
+                            dto.Payload.TryGetProperty("superDamage", out var superEl);
+                            bool plusShape = plusEl.ValueKind == JsonValueKind.True;
+                            bool xShape = xEl.ValueKind == JsonValueKind.True;
+                            bool superDamage = superEl.ValueKind == JsonValueKind.True;
+
+                            if (_playerToGame.TryGetValue(player.Id, out var g))
+                            {
+                                if (plusShape || xShape || superDamage)
+                                {
+                                    // power-up režimas
+                                    await g.ProcessCompositeShot(player.Id, x, y, isDoubleBomb, plusShape, xShape, superDamage);
+                                }
+                                else
+                                {
+                                    // senas vieno taško (arba doubleBomb) režimas
+                                    await g.ProcessShot(player.Id, x, y, isDoubleBomb);
+                                }
+                            }
+
+                            if (_botGames.TryGetValue(player.Id, out var bg))
+                            {
+                                await bg.bot.MaybePlayAsync();
+                            }
+                        }
                     break; 
                     case "playBot":
                     {

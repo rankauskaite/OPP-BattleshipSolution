@@ -36,12 +36,12 @@ namespace BattleshipClient
         private Button btnNext;
         public Button btnReplay;
         private bool isReplayMode = false; 
-
         private Button btnPlus, btnX, btnSuper;
         private bool plusActive = false, xActive = false, superActive = false;
+        public NetworkClient net { get; private set; } = new NetworkClient(); 
 
+        private FlowLayoutPanel topBar;
 
-        public NetworkClient net { get; private set; } = new NetworkClient();
 
         // state
         public List<ShipDto> myShips { get; private set; } = new List<ShipDto>();
@@ -150,9 +150,22 @@ namespace BattleshipClient
                 l1, txtServer, l2, txtName,
                 btnConnect, btnRandomize, btnPlaceShips, radioMiniGame, radioStandartGame, btnReady, btnSaveShipPlacement, btnUseGameCopy, btnDoubleBombPowerUp, btnGameOver,
                 lblStatus, lblPowerUpInfo, ownBoard, enemyBoard
-            });
+            }); 
 
-            this.Controls.Add(btnPlayBot);
+            topBar = new FlowLayoutPanel {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Padding = new Padding(600, 80, 90, 20),
+                WrapContents = false
+            };
+            this.Controls.Add(topBar);
+
+            topBar.Controls.Add(btnPlayBot); 
+            topBar.Controls.Add(btnPlus);
+            topBar.Controls.Add(btnX);
+            topBar.Controls.Add(btnSuper);
+            topBar.Controls.Add(btnDoubleBombPowerUp);
 
             btnReady.Enabled = false;
             _factory.Play(_factory.factoryMethod(MusicType.Background));
@@ -372,6 +385,9 @@ namespace BattleshipClient
             radioMiniGame.Enabled = false;
             radioStandartGame.Enabled = false;
             lblPowerUpInfo.Visible = true;
+            this.btnPlus.Visible = true;
+            this.btnX.Visible = true;
+            this.btnSuper.Visible = true;
 
             // (nebūtina, bet jei nori – kopija iš BtnReady_Click: įjungia Double Bomb pagal factory)
             if (factory.GetPowerups().TryGetValue("DoubleBomb", out int doubleBombsCount))

@@ -37,7 +37,9 @@ namespace BattleshipClient
         public Button btnReplay;
         private bool isReplayMode = false; 
         private Button btnPlus, btnX, btnSuper;
-        private bool plusActive = false, xActive = false, superActive = false;
+        private bool plusActive = false, xActive = false, superActive = false; 
+        private int plusUsed = 0, xUsed = 0, superUsed = 0;
+        private const int MaxPlus = 1, MaxX = 1, MaxSuper = 1;
         public NetworkClient net { get; private set; } = new NetworkClient(); 
 
         private FlowLayoutPanel topBar;
@@ -66,7 +68,10 @@ namespace BattleshipClient
 
         public List<ShipDto> Ships { get; set; } = new List<ShipDto>();
         private SoundFactory _factory = new SoundFactory();
-        public GameCommandManager CommandManager = new GameCommandManager();
+        public GameCommandManager CommandManager = new GameCommandManager(); 
+        // viršuje prie laukų:
+        bool powerUpsShown = false; // rodyti +/X/Super, kai žaidimas prasidėjęs
+
 
         public MainForm()
         {
@@ -118,13 +123,13 @@ namespace BattleshipClient
             btnGameOver = new Button { Text = "Game Over", Location = new Point(400, 44), Width = 100, Height = 30, Visible = false }; 
 
 
-            btnPlus  = new Button { Text = "+ Shot",  Location = new Point(560, 120), Width = 80, Height = 28 };
-            btnX     = new Button { Text = "X Shot",  Location = new Point(645, 120), Width = 80, Height = 28 };
-            btnSuper = new Button { Text = "Super",   Location = new Point(730, 120), Width = 80, Height = 28 };
+            btnPlus  = new Button { Text = "+ Shot",  Visible = false, Enabled = false, AutoSize = true };
+            btnX     = new Button { Text = "X Shot",  Visible = false, Enabled = false, AutoSize = true };
+            btnSuper = new Button { Text = "Super",   Visible = false, Enabled = false, AutoSize = true };
 
-            btnPlus.Click  += (s,e)=> { plusActive = !plusActive; btnPlus.BackColor  = plusActive ? Color.LightGreen : SystemColors.Control; };
-            btnX.Click     += (s,e)=> { xActive    = !xActive;    btnX.BackColor     = xActive    ? Color.LightGreen : SystemColors.Control; };
-            btnSuper.Click += (s,e)=> { superActive= !superActive;btnSuper.BackColor = superActive? Color.LightGreen : SystemColors.Control; };
+            btnPlus.Click  += (s,e)=> { if (plusUsed  >= MaxPlus) return; plusActive  = !plusActive;  btnPlus.BackColor  = plusActive  ? Color.LightGreen : SystemColors.Control; };
+            btnX.Click     += (s,e)=> { if (xUsed     >= MaxX)    return; xActive     = !xActive;     btnX.BackColor     = xActive     ? Color.LightGreen : SystemColors.Control; };
+            btnSuper.Click += (s,e)=> { if (superUsed >= MaxSuper)return; superActive = !superActive; btnSuper.BackColor = superActive ? Color.LightGreen : SystemColors.Control; };
 
             this.Controls.AddRange(new Control[]{ btnPlus, btnX, btnSuper });
 
@@ -276,16 +281,25 @@ namespace BattleshipClient
         {
             if (!this.isMyTurn) { this.lblStatus.Text = "Not your turn."; return; }
             this.lblStatus.Text = $"Firing at {p.X},{p.Y}...";
-            var shot = new {
+            var shot = new
+            {
                 type = "shot",
-                payload = new {
-                    x = p.X, y = p.Y,
+                payload = new
+                {
+                    x = p.X,
+                    y = p.Y,
                     doubleBomb = this.doubleBombActive,  // likusi logika kaip buvo
                     plusShape = this.plusActive,
                     xShape = this.xActive,
                     superDamage = this.superActive
                 }
-            };
+            }; 
+            if (plusActive)  { plusActive = false; plusUsed  = MaxPlus;  btnPlus.Enabled  = false; btnPlus.Text  = "+ Shot (used)"; btnPlus.BackColor  = SystemColors.Control; }
+            if (xActive)     { xActive    = false; xUsed     = MaxX;     btnX.Enabled     = false; btnX.Text     = "X Shot (used)";  btnX.BackColor     = SystemColors.Control; }
+            if (superActive) { superActive= false; superUsed = MaxSuper; btnSuper.Enabled = false; btnSuper.Text = "Super (used)";   btnSuper.BackColor = SystemColors.Control; }
+
+           SyncPowerUpsUI();
+
             if (this.doubleBombActive)
             {
                 this.doubleBombActive = false;
@@ -295,9 +309,11 @@ namespace BattleshipClient
                 {
                     this.btnDoubleBombPowerUp.Enabled = false;
                     this.btnDoubleBombPowerUp.Visible = false;
+                    //SyncPowerUpsWithDoubleBomb();
                 }
                 UpdatePowerUpLabel();
-            }
+            } 
+                                //SyncPowerUpsWithDoubleBomb();
             await net.SendAsync(shot);
         }
 
@@ -356,9 +372,14 @@ namespace BattleshipClient
                 this.btnDoubleBombPowerUp.Visible = true;
             }
             UpdatePowerUpLabel();
-            this.btnUseGameCopy.Visible = false;
-            this.btnSaveShipPlacement.Visible = true;
-            this.btnSaveShipPlacement.Enabled = true;
+            plusUsed = xUsed = superUsed = 0;      // reset skaitiklių
+            plusActive = xActive = superActive = false;
+            btnPlus.Text = "+ Shot"; btnPlus.BackColor = SystemColors.Control;
+            btnX.Text = "X Shot";   btnX.BackColor   = SystemColors.Control;
+            btnSuper.Text = "Super";btnSuper.BackColor= SystemColors.Control;
+
+            powerUpsShown = true;                  // Žaidimas prasidėjo – rodom
+            SyncPowerUpsUI();     
         }
 
         private async void BtnPlayBot_Click(object sender, EventArgs e)
@@ -397,7 +418,15 @@ namespace BattleshipClient
                 this.btnDoubleBombPowerUp.Enabled = true;
                 this.btnDoubleBombPowerUp.Visible = true;
                 UpdatePowerUpLabel();
-            }
+            } 
+            plusUsed = xUsed = superUsed = 0;
+            plusActive = xActive = superActive = false;
+            btnPlus.Text = "+ Shot"; btnPlus.BackColor = SystemColors.Control;
+            btnX.Text = "X Shot";   btnX.BackColor   = SystemColors.Control;
+            btnSuper.Text = "Super";btnSuper.BackColor= SystemColors.Control;
+
+            powerUpsShown = true;
+            SyncPowerUpsUI(); 
         }
 
         private void Net_OnMessageReceived(MessageDto dto)
@@ -408,7 +437,23 @@ namespace BattleshipClient
                 return;
             }
             this.MessageService.HandleMessage(dto, this);
+        } 
+
+
+
+        private void SyncPowerUpsUI()
+        {
+            // Matomumas: tik ar žaidimas vyksta
+            btnPlus.Visible  = powerUpsShown;
+            btnX.Visible     = powerUpsShown;
+            btnSuper.Visible = powerUpsShown;
+
+            // Įjungimas: jei dar nepanaudota
+            btnPlus.Enabled  = powerUpsShown && (plusUsed  < MaxPlus);
+            btnX.Enabled     = powerUpsShown && (xUsed     < MaxX);
+            btnSuper.Enabled = powerUpsShown && (superUsed < MaxSuper);
         }
+
 
         private async void BtnGameOver_Click(object sender, EventArgs e)
         {
@@ -425,7 +470,9 @@ namespace BattleshipClient
                 this.btnSaveShipPlacement.Visible = false;
                 this.btnNext.Visible = false;
                 this.btnPrev.Visible = false;
-                this.btnReplay.Visible = false;
+                this.btnReplay.Visible = false; 
+                powerUpsShown = false;
+                SyncPowerUpsUI();
             }
             else
             {
@@ -451,7 +498,8 @@ namespace BattleshipClient
             {
                 this.doubleBombActive = false;
                 this.btnDoubleBombPowerUp.Enabled = false;
-                this.btnDoubleBombPowerUp.Visible = false;
+                this.btnDoubleBombPowerUp.Visible = false; 
+                SyncPowerUpsUI();
             }
         }
 

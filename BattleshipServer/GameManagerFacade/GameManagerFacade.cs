@@ -91,29 +91,23 @@ namespace BattleshipServer.GameManagerFacade
         {
             if (dto.Payload.TryGetProperty("x", out var xe) && dto.Payload.TryGetProperty("y", out var ye))
             {
-                bool isDoubleBomb = messageDtoService.GetIsDoubleBomb(dto);
                 int x = xe.GetInt32();
                 int y = ye.GetInt32();
-                // NEW: power-up flag'ai
-                dto.Payload.TryGetProperty("plusShape", out var plusEl);
-                dto.Payload.TryGetProperty("xShape", out var xEl);
-                dto.Payload.TryGetProperty("superDamage", out var superEl);
-                bool plusShape = plusEl.ValueKind == JsonValueKind.True;
-                bool xShape = xEl.ValueKind == JsonValueKind.True;
-                bool superDamage = superEl.ValueKind == JsonValueKind.True;
-
                 Game? game = manager.GetPlayersGame(player.Id);
                 if (game != null)
                 {
-                    if (plusShape || xShape || superDamage)
+                    Dictionary<string, bool> powerUps = messageDtoService.GetPowerups(dto);
+                    powerUps.TryGetValue("doubleBomb", out bool isDoubleBomb);
+                    powerUps.TryGetValue("plusShape", out bool plusShape);
+                    powerUps.TryGetValue("xShape", out bool xShape);
+                    powerUps.TryGetValue("superDamage", out bool superDamage);
+                    if (plusShape || xShape || superDamage )
                     {
-                        // power-up režimas
-                        await g.ProcessCompositeShot(player.Id, x, y, isDoubleBomb, plusShape, xShape, superDamage);
+                        await game.ProcessCompositeShot(player.Id, x, y, isDoubleBomb, plusShape, xShape, superDamage);
                     }
                     else
                     {
-                        // senas vieno taško (arba doubleBomb) režimas
-                        await g.ProcessShot(player.Id, x, y, isDoubleBomb);
+                        await game.ProcessShot(player.Id, x, y, isDoubleBomb);
                     }
                 }
                 (Game? game, BotOrchestrator? bot) botGame = manager.GetBotGame(player.Id);

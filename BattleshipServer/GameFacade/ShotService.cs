@@ -1,4 +1,6 @@
 ﻿using BattleshipServer.Data;
+using BattleshipServer.Domain;
+using BattleshipServer.PowerUps;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -78,6 +80,78 @@ namespace BattleshipServer.GameFacade
                 await messageService.SendErrorAsync(shooter, "Cell already shot");
                 return;
             }
+        }
+
+        public async void ProcessCompositeShot(Game game, Guid shooterId, int x0, int y0, bool isDoubleBomb, bool plusShape, bool xShape, bool superDamage)
+        {
+            if (!plusShape && !xShape && !superDamage)
+            {
+                ProcessShot(game, shooterId, x0, y0, isDoubleBomb);
+                return;
+            }
+            var shooter = playerService.GetPlayer(shooterId, game);
+            var target = playerService.GetOpponent(shooterId, game);
+            (int[,] board, List<Game.Ship> ships) = playerService.GetTargetBoardAndShips(target, game);
+
+            IShotPattern patt = new SingleCellPattern();
+            if (plusShape) patt = new PlusPatternDecorator(patt);
+            if (xShape) patt = new XPatternDecorator(patt);
+            var cells = patt.GetCells(x0, y0, 10, 10).Distinct().ToList();
+
+            IShotEffect effect = superDamage ? new SuperDamageEffect() : new NoopEffect();
+
+            lastShootHit = false;
+            var sunkThisTurn = new HashSet<Game.Ship>(); // kad nekartotume „whole_ship_down“
+
+            foreach (var (x, y) in cells)
+            {
+                var (success, hit) = ProcessShot(x, y, board);
+                if (!success) continue;
+                // 1) VISADA pirma nusiunčiam "hit"/"miss"
+                await messageService.SendShotInfo(game.Player1, game.Player2, shooterId, target, x, y, hit);
+                
+                if (hit)
+                {
+                    lastShootHit = true;
+                    // 2) taikom efektą (superDamage pažymės laivą nuskendusiu)
+                    _ = effect.AfterCellHit(x, y, board, ships);
+
+                    // 3) surandam laivą, kurį palietėm
+                    var hitShip = ships.FirstOrDefault(s =>
+                        (s.Horizontal && y == s.Y && x >= s.X && x < s.X + s.Len) ||
+                        (!s.Horizontal && x == s.X && y >= s.Y && y < s.Y + s.Len));
+
+                    // 4) jei dabar laivas nuskendęs -> išsiunčiam whole_ship_down visoms jo ląstelėms (kartą)
+                    if (hitShip != null && !sunkThisTurn.Contains(hitShip) && hitShip.IsSunk(board))
+                    {
+                        sunkThisTurn.Add(hitShip);
+                        for (int i = 0; i < hitShip.Len; i++)
+                        {
+                            int cx = hitShip.X + (hitShip.Horizontal ? i : 0);
+                            int cy = hitShip.Y + (hitShip.Horizontal ? 0 : i);
+
+                            await messageService.SendWholeShipDown(game.Player1, game.Player2, shooterId, target, cx, cy);
+                        }
+                    }
+                }
+
+                // 5) ar liko laivų?
+                bool anyLeft = ships.Any(s => !s.IsSunk(board));
+                if (!anyLeft)
+                {
+                    game.SetIsGameOver(true);
+                    await messageService.SendGameOverAsync(game.Player1, game.Player2, shooterId);
+                    game.SaveGameToDB(shooterId);
+                    return;
+                }
+            }
+
+            if (!lastShootHit)
+            {
+                game.SetCurrentPlayer(target.Id);
+            }
+
+            await messageService.SendTurnMessage(game.Player1, game.Player2, game.CurrentPlayerId);
         }
 
         private int[] GetDoubleBombCoords(int[,] targetBoard, int x, int y)

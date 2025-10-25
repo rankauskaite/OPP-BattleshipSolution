@@ -62,5 +62,24 @@ namespace BattleshipServer.GameFacade
                 await messageService.SendTurnMessage(game.Player1, game.Player2, game.CurrentPlayerId);
             }
         }
+
+        public async Task HandleCompositeShot(Game game, Guid shooterId, int x0, int y0, bool isDoubleBomb, bool plusShape, bool xShape, bool superDamage)
+        {
+            if (shooterId != game.CurrentPlayerId)
+            {
+                await messageService.SendErrorAsync(playerService.GetPlayer(shooterId, game), "Not your turn");
+                return;
+            }
+
+            if (game.GetIsGameOver())
+            {
+                await messageService.SendErrorAsync(playerService.GetPlayer(shooterId, game), "Game already finished");
+                return;
+            }
+
+            shotService.ProcessCompositeShot(game, shooterId, x0, y0, isDoubleBomb, plusShape, xShape, superDamage);
+
+        }
+
     }
 }

@@ -45,5 +45,19 @@ namespace BattleshipServer.GameManagerFacade
         {
             return GetBool(dto, "doubleBomb", false);
         }
+
+        public Dictionary<string, bool> GetPowerups(MessageDto dto)
+        {
+            Dictionary<string, bool> powerups = new Dictionary<string, bool>();
+            powerups["doubleBomb"] = GetIsDoubleBomb(dto);
+            // NEW: power-up flag'ai
+            dto.Payload.TryGetProperty("plusShape", out var plusEl);
+            dto.Payload.TryGetProperty("xShape", out var xEl);
+            dto.Payload.TryGetProperty("superDamage", out var superEl);
+            powerups["plusShape"] = plusEl.ValueKind == JsonValueKind.True;
+            powerups["xShape"] = xEl.ValueKind == JsonValueKind.True;
+            powerups["superDamage"] = superEl.ValueKind == JsonValueKind.True;
+            return powerups;
+        }
     }
 }

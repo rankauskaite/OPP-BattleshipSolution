@@ -17,12 +17,12 @@ namespace BattleshipServer.Builders
         IGameSetupBuilder ConfigureFleets(List<BattleshipServer.Models.ShipDto> humanShips, bool opponentRandom);
 
         // 4) NPC (nebūtina): leist prijungti BotOrchestrator
-        IGameSetupBuilder ConfigureNpc(Func<Game, BotOrchestrator?>? npcFactory);
+        IGameSetupBuilder ConfigureNpc(Func<Game, IBotPlayerController?>? npcFactory);
 
         // 5) pagaminti produktą
         Game Build();
 
         // grąžinam „pagamintą“ orkestratorių (jei ConfigureNpc buvo paduotas)
-        BotOrchestrator? Orchestrator { get; }
+        IBotPlayerController? Orchestrator { get; }
     }
 }

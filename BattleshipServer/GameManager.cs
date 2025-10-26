@@ -20,7 +20,7 @@ namespace BattleshipServer
         private readonly ConcurrentDictionary<Guid, Game> _playerToGame = new();
         private readonly List<Game> _games = new();
         private readonly Database _db = new Database("battleship.db"); 
-        private readonly ConcurrentDictionary<Guid, (Game game, BotOrchestrator bot)> _botGames = new();
+        private readonly ConcurrentDictionary<Guid, (Game game, IBotPlayerController bot)> _botGames = new();
         private readonly Dictionary<Guid, Game> copiedGames = new();
         private readonly GameManagerFacade.GameManagerFacade gameManagerFacade = new GameManagerFacade.GameManagerFacade();
 
@@ -38,7 +38,7 @@ namespace BattleshipServer
             return null;
         }
 
-        public (Game? game, BotOrchestrator? bot) GetBotGame(Guid playerId)
+        public (Game? game, IBotPlayerController? bot) GetBotGame(Guid playerId)
         {
             if (_botGames.TryGetValue(playerId, out var bg))
             {
@@ -53,7 +53,7 @@ namespace BattleshipServer
             _playerToGame[playerId] = game;
         }
 
-        public void AddGame(Game game, Guid playerId, BotOrchestrator orchestrator)
+        public void AddGame(Game game, Guid playerId, IBotPlayerController orchestrator)
         {
             this.AddGame(game, playerId);
             _botGames[playerId] = (game, orchestrator);

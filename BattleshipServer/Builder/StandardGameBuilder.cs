@@ -15,8 +15,8 @@ namespace BattleshipServer.Builders
 
         private List<ShipDto>? _humanShips;
         private bool _opponentRandom;
-        private Func<Game, BotOrchestrator?>? _npcFactory;
-        public BotOrchestrator? Orchestrator { get; private set; }
+        private Func<Game, IBotPlayerController?>? _npcFactory;
+        public IBotPlayerController? Orchestrator { get; private set; }
 
         public IGameSetupBuilder CreateShell(PlayerConnection p1, PlayerConnection p2, GameManager manager, BattleshipServer.Data.Database db)
         { _p1 = p1; _p2 = p2; _mgr = manager; _db = db; return this; }
@@ -32,7 +32,7 @@ namespace BattleshipServer.Builders
         public IGameSetupBuilder ConfigureFleets(List<ShipDto> humanShips, bool opponentRandom)
         { _humanShips = humanShips; _opponentRandom = opponentRandom; return this; }
 
-        public IGameSetupBuilder ConfigureNpc(Func<Game, BotOrchestrator?>? npcFactory)
+        public IGameSetupBuilder ConfigureNpc(Func<Game, IBotPlayerController?>? npcFactory)
         { _npcFactory = npcFactory; return this; }
 
         public Game Build()

@@ -110,7 +110,7 @@ namespace BattleshipServer.GameManagerFacade
                         await game.ProcessShot(player.Id, x, y, isDoubleBomb);
                     }
                 }
-                (Game? game, BotOrchestrator? bot) botGame = manager.GetBotGame(player.Id);
+                (Game? game, IBotPlayerController? bot) botGame = manager.GetBotGame(player.Id);
                 if(botGame.bot != null)
                 {
                     await botGame.bot.MaybePlayAsync();

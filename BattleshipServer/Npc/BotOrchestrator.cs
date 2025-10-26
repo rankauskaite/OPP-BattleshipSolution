@@ -6,15 +6,15 @@ using BattleshipServer.Models;
 
 namespace BattleshipServer.Npc
 {
-    public sealed class BotOrchestrator
+    public sealed class BotOrchestrator : IBotPlayerController
     {
         private readonly Game _game;
         private readonly Guid _botId;
         private readonly BoardKnowledge _k;
         private readonly NpcController _ctrl;
-
-        // tik human lentos dydžiui (pas tave 10x10)
         private const int W = 10, H = 10;
+        public Guid BotId => _botId;
+
 
         public BotOrchestrator(Game game, Guid botId, IStrategySelector selector, string initialKey = "checkerboard")
         {
@@ -26,7 +26,7 @@ namespace BattleshipServer.Npc
             _game.ShotResolved += OnShotResolved;
         }
 
-        private void OnShotResolved(Guid shooterId, int x, int y, bool hit, bool sunk, List<(int x,int y)> sunkCells)
+        public void OnShotResolved(Guid shooterId, int x, int y, bool hit, bool sunk, List<(int x,int y)> sunkCells)
         {
             // Mus domina BOTO šūviai į žmogų -> atnaujinam žinias
             if (shooterId == _botId)
@@ -45,13 +45,10 @@ namespace BattleshipServer.Npc
 
         public async Task MaybePlayAsync()
         {
-            // Botas meta tol, kol neprašauna (tavo Game taip keičia ėjimą)
             while (_game.CurrentPlayerId == _botId)
             {
                 var (tx, ty) = _ctrl.Decide(_k);
                 await _game.ProcessShot(_botId, tx, ty, isDoubleBomb: false);
-                // Po ProcessShot Game pats atsiųs "turn" — event'as OnShotResolved jau atnaujins _k, 
-                // o while ciklas pasibaigs, jei pramesta (turn pereina žmogui).
             }
         }
     }

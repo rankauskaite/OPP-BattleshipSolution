@@ -363,6 +363,9 @@ namespace BattleshipClient
             radioMiniGame.Enabled = false;
             radioStandartGame.Enabled = false;
             lblPowerUpInfo.Visible = true;
+            btnUseGameCopy.Visible = false;
+            btnSaveShipPlacement.Visible = true;
+            btnSaveShipPlacement.Enabled = true;
 
             if (factory.GetPowerups().TryGetValue("DoubleBomb", out int doubleBombsCount))
             {

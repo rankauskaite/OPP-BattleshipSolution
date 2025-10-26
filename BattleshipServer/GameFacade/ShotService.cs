@@ -46,7 +46,7 @@ namespace BattleshipServer.GameFacade
                 int y1 = doubleBombNextCoors[1];
                 if (doubleBombNextCoors.Length == 2 && x1 >= 0 && y1 >= 0)
                 {
-                    (success, hit) = ProcessShot(x1, y1, targetBoard);
+                    (success, hit) = await ProcessShot(x1, y1, targetBoard, shooterId, game);
                     if (!success)
                     {
                         await messageService.SendErrorAsync(shooter, "Cell already shot");
@@ -73,7 +73,7 @@ namespace BattleshipServer.GameFacade
                 }
             }
 
-            (success, hit) = ProcessShot(x, y, targetBoard);
+            (success, hit) = await ProcessShot(x, y, targetBoard, shooterId, game);
             this.lastShootHit = hit;
             if (!success)
             {
@@ -106,11 +106,11 @@ namespace BattleshipServer.GameFacade
 
             foreach (var (x, y) in cells)
             {
-                var (success, hit) = ProcessShot(x, y, board);
+                var (success, hit) = await ProcessShot(x, y, board, shooterId, game);
                 if (!success) continue;
                 // 1) VISADA pirma nusiunčiam "hit"/"miss"
                 await messageService.SendShotInfo(game.Player1, game.Player2, shooterId, target, x, y, hit);
-                
+
                 if (hit)
                 {
                     lastShootHit = true;
@@ -197,7 +197,7 @@ namespace BattleshipServer.GameFacade
             return possible_moves[idx];
         }
 
-        private (bool, bool) ProcessShot(int x, int y, int[,] targetBoard)
+        private async  Task<(bool, bool)> ProcessShot(int x, int y, int[,] targetBoard, Guid shooterId, Game game)
         {
             bool success = true;
             bool hit = false;
@@ -205,6 +205,9 @@ namespace BattleshipServer.GameFacade
             {
                 targetBoard[y, x] = 3; // hit
                 hit = true;
+
+                // Scoreboard AddHit
+                await Scoreboard.Instance.AddHit(shooterId, game);
             }
             else if (targetBoard[y, x] == 0)
             {

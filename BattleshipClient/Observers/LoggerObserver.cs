@@ -10,7 +10,6 @@ namespace BattleshipClient.Observers
 
         public LoggerObserver(string playerName)
         {
-            // Sukuriamas failo pavadinimas pagal žaidėjo vardą
             string safeName = string.Join("_", playerName.Split(Path.GetInvalidFileNameChars()));
             logFile = $"game_log_{safeName}.txt";
         }

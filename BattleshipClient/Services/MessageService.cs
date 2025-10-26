@@ -1,4 +1,4 @@
-using BattleshipClient.Models;
+﻿using BattleshipClient.Models;
 using BattleshipClient.Observers;
 using BattleshipClient.Factory;
 using System.Windows.Forms;
@@ -10,11 +10,13 @@ namespace BattleshipClient.Services
     {
         private readonly GameEventManager _eventManager = new();
         private readonly SoundFactory _factory = new SoundFactory();
+        private readonly string _localPlayerName;
 
-        public MessageService()
+        public MessageService(string localPlayerName)
         {
+            _localPlayerName = localPlayerName;
             _eventManager.Attach(new SoundObserver());
-            _eventManager.Attach(new LoggerObserver());
+            _eventManager.Attach(new LoggerObserver(_localPlayerName));
         }
 
         public void HandleMessage(MessageDto dto, MainForm form)
@@ -84,7 +86,6 @@ namespace BattleshipClient.Services
                         };
 
                         var board = isMyShot ? form.enemyBoard : form.ownBoard;
-
                         var prevState = board.GetCell(x, y);
 
                         var cmd = new BattleshipClient.Commands.ShotCommand(board, x, y, prevState, newState, shooterName);
@@ -92,20 +93,17 @@ namespace BattleshipClient.Services
 
                         form.lblStatus.Text = $"Shot result: {res} at {x},{y}";
 
-                        if (!isMyShot)
+                        switch (res)
                         {
-                            Ship targetShip = form.ownShips.FirstOrDefault(s =>
-                                s.X <= x && s.X + (s._direction == "H" ? s._length : 0) > x &&
-                                s.Y <= y && s.Y + (s._direction == "V" ? s._length : 0) > y);
-
-                            if (targetShip != null)
-                            {
-                                targetShip.RegisterShot(x, y);
-                            }
-                            else
-                            {
+                            case "hit":
+                                _eventManager.Notify("HIT", shooterName);
+                                break;
+                            case "whole_ship_down":
+                                _eventManager.Notify("EXPLOSION", shooterName);
+                                break;
+                            default:
                                 _eventManager.Notify("MISS", shooterName);
-                            }
+                                break;
                         }
 
                         break;

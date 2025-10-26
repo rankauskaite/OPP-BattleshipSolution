@@ -5,18 +5,25 @@ namespace BattleshipClient.Observers
 {
     public class LoggerObserver : IGameObserver
     {
-        private readonly string logFile = "game_log.txt";
+        private string logFile;
         private bool isFirstWrite = true;
+
+        public LoggerObserver(string playerName)
+        {
+            // Sukuriamas failo pavadinimas pagal žaidėjo vardą
+            string safeName = string.Join("_", playerName.Split(Path.GetInvalidFileNameChars()));
+            logFile = $"game_log_{safeName}.txt";
+        }
 
         public void OnGameEvent(string eventType, string playerName, object? data = null)
         {
-            // Kai prasideda naujas žaidimas — išvalom logą
             if (isFirstWrite)
             {
                 try
                 {
                     if (File.Exists(logFile))
-                        File.WriteAllText(logFile, string.Empty); // išvalom failą
+                        File.WriteAllText(logFile, string.Empty);
+
                     File.AppendAllText(logFile, "==== Naujas žaidimas ====\n");
                 }
                 catch (Exception ex)

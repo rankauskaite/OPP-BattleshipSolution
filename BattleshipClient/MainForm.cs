@@ -64,7 +64,7 @@ namespace BattleshipClient
         // services
         private ShipPlacementService ShipPlacementService = new ShipPlacementService();
         private GameService GameService = new GameService();
-        private MessageService MessageService = new MessageService();
+        private MessageService MessageService;
 
         public List<ShipDto> Ships { get; set; } = new List<ShipDto>();
         private SoundFactory _factory = new SoundFactory();
@@ -196,6 +196,7 @@ namespace BattleshipClient
                 await net.SendAsync(register);
                 btnConnect.Enabled = false;
                 myName = txtName.Text;
+                MessageService = new MessageService(myName);
             }
             catch (Exception ex)
             {
@@ -436,10 +437,11 @@ namespace BattleshipClient
                 this.BeginInvoke(new Action(() => Net_OnMessageReceived(dto)));
                 return;
             }
+
+            if (MessageService == null) return;
+
             this.MessageService.HandleMessage(dto, this);
-        } 
-
-
+        }
 
         private void SyncPowerUpsUI()
         {

@@ -1,4 +1,4 @@
-using BattleshipClient.Models;
+﻿using BattleshipClient.Models;
 using BattleshipClient.Observers;
 using BattleshipClient.Factory;
 using System.Windows.Forms;
@@ -128,6 +128,10 @@ namespace BattleshipClient.Services
                 case "error":
                     if (dto.Payload.TryGetProperty("message", out var err))
                         MessageBox.Show(err.GetString(), "Error");
+                    break;
+
+                case "scoreUpdate":
+                    form.UpdateScoreboardUI(dto.Payload);
                     break;
             }
         }

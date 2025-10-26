@@ -1,4 +1,4 @@
-﻿using System;
+﻿﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text.Json;
@@ -89,7 +89,7 @@ namespace BattleshipServer
             }
         }
 
-        private void TryPairPlayers()
+        private async void TryPairPlayers()
         {
             if (_waiting.Count >= 2)
             {
@@ -99,6 +99,9 @@ namespace BattleshipServer
                     _games.Add(g);
                     _playerToGame[p1.Id] = g;
                     _playerToGame[p2.Id] = g;
+
+                    // Show player names on scoreboard
+                    await Scoreboard.Instance.RegisterPlayers(p1.Name, p2.Name, g);
 
                     // Notify both that they were paired
                     var pairedPayload = JsonSerializer.SerializeToElement(new { message = $"Paired: {p1.Name} <-> {p2.Name}" });

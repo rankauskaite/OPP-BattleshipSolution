@@ -86,7 +86,7 @@ namespace BattleshipClient
         private void InitializeComponents()
         {
             this.Text = "Battleship Client";
-            this.ClientSize = new Size(1050, 650);
+            this.ClientSize = new Size(1200, 650);
             this.BackColor = ColorTranslator.FromHtml("#f8f9fa");
 
             Label l1 = new Label { Text = "Server (ws):", Location = new Point(10, 10), AutoSize = true };
@@ -144,7 +144,7 @@ namespace BattleshipClient
 
             shipPanel = new FlowLayoutPanel
             {
-                Location = new Point(80, 530),
+                Location = new Point(100, 530),
                 Size = new Size(450, 100),
                 AutoScroll = true,
                 BorderStyle = BorderStyle.FixedSingle,

@@ -1,5 +1,6 @@
 ﻿using BattleshipClient.Observers;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace BattleshipClient.Models
 {
@@ -13,7 +14,7 @@ namespace BattleshipClient.Models
 
         public int X { get; }
         public int Y { get; }
-        public bool IsSunk { get { return _hits.All(h => h); } }
+        public bool IsSunk => _hits.All(h => h);
 
         public Ship(GameEventManager eventManager, ShipDto dto, string shooterName)
         {
@@ -26,22 +27,28 @@ namespace BattleshipClient.Models
             _hits = new List<bool>(new bool[_length]);
         }
 
-        public void RegisterShot(int shotX, int shotY)
+        public string RegisterShot(int shotX, int shotY)
         {
             int relativePos = GetRelativePosition(shotX, shotY);
             if (relativePos >= 0 && relativePos < _length)
             {
                 _hits[relativePos] = true;
                 if (IsSunk)
+                {
                     _eventManager.Notify("EXPLOSION", _shooterName);
+                    return "whole_ship_down";
+                }
                 else
+                {
                     _eventManager.Notify("HIT", _shooterName);
+                    return "hit";
+                }
             }
-            else
-            {
-                _eventManager.Notify("MISS", _shooterName);
-            }
+
+            _eventManager.Notify("MISS", _shooterName);
+            return "miss";
         }
+
 
         private int GetRelativePosition(int shotX, int shotY)
         {

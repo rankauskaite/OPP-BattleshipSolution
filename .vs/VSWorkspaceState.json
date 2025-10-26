@@ -2,12 +2,9 @@
   "ExpandedNodes": [
     "",
     "\\BattleshipClient",
-    "\\BattleshipClient\\Models",
+    "\\BattleshipClient\\Commands",
     "\\BattleshipClient\\Observers",
-    "\\BattleshipClient\\Services",
-    "\\BattleshipServer",
-    "\\BattleshipServer\\Builder",
-    "\\BattleshipServer\\NPC"
+    "\\BattleshipClient\\Services"
   ],
   "PreviewInSolutionExplorer": false
 }

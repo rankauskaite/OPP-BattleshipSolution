@@ -3,24 +3,72 @@
   "WorkspaceRootPath": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Services\\MessageService.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BattleshipClient\\Services\\MessageService.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\MainForm.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BattleshipClient\\MainForm.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Commands\\ShotCommand.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BattleshipClient\\Commands\\ShotCommand.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Views\\Renderers\\WinFormsRenderer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BattleshipClient\\Views\\Renderers\\WinFormsRenderer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\GameBoard.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BattleshipClient\\GameBoard.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Views\\Renderers\\IBoardRenderer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BattleshipClient\\Views\\Renderers\\IBoardRenderer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Views\\ColorfulBoardView.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BattleshipClient\\Views\\ColorfulBoardView.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Views\\PowerUpBoardView.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BattleshipClient\\Views\\PowerUpBoardView.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Views\\RetroBoardView.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BattleshipClient\\Views\\RetroBoardView.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Views\\ClassicBoardView.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BattleshipClient\\Views\\ClassicBoardView.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Views\\BoardView.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BattleshipClient\\Views\\BoardView.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Services\\MessageService.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BattleshipClient\\Services\\MessageService.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Observers\\LoggerObserver.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BattleshipClient\\Observers\\LoggerObserver.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Models\\Ship.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BattleshipClient\\Models\\Ship.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Observers\\SoundObserver.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BattleshipClient\\Observers\\SoundObserver.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Observers\\GameEventManager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BattleshipClient\\Observers\\GameEventManager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Factory\\SoundFactory.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BattleshipClient\\Factory\\SoundFactory.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Factory\\Sound.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BattleshipClient\\Factory\\Sound.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Commands\\ICommand.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BattleshipClient\\Commands\\ICommand.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Commands\\GameCommandManager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BattleshipClient\\Commands\\GameCommandManager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -30,50 +78,219 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 6,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "MessageService.cs",
-              "DocumentMoniker": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Services\\MessageService.cs",
-              "RelativeDocumentMoniker": "BattleshipClient\\Services\\MessageService.cs",
-              "ToolTip": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Services\\MessageService.cs",
-              "RelativeToolTip": "BattleshipClient\\Services\\MessageService.cs",
-              "ViewState": "AgIAAEIAAAAAAAAAAAAAAE0AAAAAAAAAAAAAAA==",
+              "DocumentIndex": 4,
+              "Title": "ColorfulBoardView.cs",
+              "DocumentMoniker": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Views\\ColorfulBoardView.cs",
+              "RelativeDocumentMoniker": "BattleshipClient\\Views\\ColorfulBoardView.cs",
+              "ToolTip": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Views\\ColorfulBoardView.cs",
+              "RelativeToolTip": "BattleshipClient\\Views\\ColorfulBoardView.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABYAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-10-24T16:48:09.138Z",
+              "WhenOpened": "2025-10-26T18:55:58.798Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "GameBoard.cs",
+              "DocumentMoniker": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\GameBoard.cs",
+              "RelativeDocumentMoniker": "BattleshipClient\\GameBoard.cs",
+              "ToolTip": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\GameBoard.cs",
+              "RelativeToolTip": "BattleshipClient\\GameBoard.cs",
+              "ViewState": "AgIAAPEAAAAAAAAAAAAiwAsBAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-26T18:42:49.516Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 1,
+              "Title": "WinFormsRenderer.cs",
+              "DocumentMoniker": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Views\\Renderers\\WinFormsRenderer.cs",
+              "RelativeDocumentMoniker": "BattleshipClient\\Views\\Renderers\\WinFormsRenderer.cs",
+              "ToolTip": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Views\\Renderers\\WinFormsRenderer.cs",
+              "RelativeToolTip": "BattleshipClient\\Views\\Renderers\\WinFormsRenderer.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAAoAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-26T18:42:23.195Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "IBoardRenderer.cs",
+              "DocumentMoniker": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Views\\Renderers\\IBoardRenderer.cs",
+              "RelativeDocumentMoniker": "BattleshipClient\\Views\\Renderers\\IBoardRenderer.cs",
+              "ToolTip": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Views\\Renderers\\IBoardRenderer.cs",
+              "RelativeToolTip": "BattleshipClient\\Views\\Renderers\\IBoardRenderer.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-26T18:42:01.603Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "PowerUpBoardView.cs",
+              "DocumentMoniker": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Views\\PowerUpBoardView.cs",
+              "RelativeDocumentMoniker": "BattleshipClient\\Views\\PowerUpBoardView.cs",
+              "ToolTip": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Views\\PowerUpBoardView.cs",
+              "RelativeToolTip": "BattleshipClient\\Views\\PowerUpBoardView.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABYAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-26T18:40:36.265Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "RetroBoardView.cs",
+              "DocumentMoniker": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Views\\RetroBoardView.cs",
+              "RelativeDocumentMoniker": "BattleshipClient\\Views\\RetroBoardView.cs",
+              "ToolTip": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Views\\RetroBoardView.cs",
+              "RelativeToolTip": "BattleshipClient\\Views\\RetroBoardView.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABYAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-26T18:40:09.081Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
               "Title": "MainForm.cs",
               "DocumentMoniker": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\MainForm.cs",
               "RelativeDocumentMoniker": "BattleshipClient\\MainForm.cs",
               "ToolTip": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\MainForm.cs",
               "RelativeToolTip": "BattleshipClient\\MainForm.cs",
-              "ViewState": "AgIAAMwBAAAAAAAAAAAAANoBAAA3AAAAAAAAAA==",
+              "ViewState": "AgIAAEsAAAAAAAAAAAAAAFkAAAAvAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-10-24T16:46:36.42Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "ShotCommand.cs",
-              "DocumentMoniker": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Commands\\ShotCommand.cs",
-              "RelativeDocumentMoniker": "BattleshipClient\\Commands\\ShotCommand.cs",
-              "ToolTip": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Commands\\ShotCommand.cs",
-              "RelativeToolTip": "BattleshipClient\\Commands\\ShotCommand.cs",
-              "ViewState": "AgIAAAYAAAAAAAAAAAAAACAAAAAzAAAAAAAAAA==",
+              "DocumentIndex": 7,
+              "Title": "ClassicBoardView.cs",
+              "DocumentMoniker": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Views\\ClassicBoardView.cs",
+              "RelativeDocumentMoniker": "BattleshipClient\\Views\\ClassicBoardView.cs",
+              "ToolTip": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Views\\ClassicBoardView.cs",
+              "RelativeToolTip": "BattleshipClient\\Views\\ClassicBoardView.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABUAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-10-24T16:36:18.077Z",
+              "WhenOpened": "2025-10-26T18:39:47.336Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 8,
+              "Title": "BoardView.cs",
+              "DocumentMoniker": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Views\\BoardView.cs",
+              "RelativeDocumentMoniker": "BattleshipClient\\Views\\BoardView.cs",
+              "ToolTip": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Views\\BoardView.cs",
+              "RelativeToolTip": "BattleshipClient\\Views\\BoardView.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-26T18:39:17.895Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "SoundObserver.cs",
+              "DocumentMoniker": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Observers\\SoundObserver.cs",
+              "RelativeDocumentMoniker": "BattleshipClient\\Observers\\SoundObserver.cs",
+              "ToolTip": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Observers\\SoundObserver.cs",
+              "RelativeToolTip": "BattleshipClient\\Observers\\SoundObserver.cs",
+              "ViewState": "AgIAAAMAAAAAAAAAAAAAABUAAAAZAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-24T17:56:07.75Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "LoggerObserver.cs",
+              "DocumentMoniker": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Observers\\LoggerObserver.cs",
+              "RelativeDocumentMoniker": "BattleshipClient\\Observers\\LoggerObserver.cs",
+              "ToolTip": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Observers\\LoggerObserver.cs",
+              "RelativeToolTip": "BattleshipClient\\Observers\\LoggerObserver.cs",
+              "ViewState": "AgIAABsAAAAAAAAAAAAAACoAAAAeAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-24T17:55:59.754Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "Ship.cs",
+              "DocumentMoniker": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Models\\Ship.cs",
+              "RelativeDocumentMoniker": "BattleshipClient\\Models\\Ship.cs",
+              "ToolTip": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Models\\Ship.cs",
+              "RelativeToolTip": "BattleshipClient\\Models\\Ship.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAADIAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-24T17:37:46.323Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "GameEventManager.cs",
+              "DocumentMoniker": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Observers\\GameEventManager.cs",
+              "RelativeDocumentMoniker": "BattleshipClient\\Observers\\GameEventManager.cs",
+              "ToolTip": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Observers\\GameEventManager.cs",
+              "RelativeToolTip": "BattleshipClient\\Observers\\GameEventManager.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-24T17:33:23.291Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "SoundFactory.cs",
+              "DocumentMoniker": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Factory\\SoundFactory.cs",
+              "RelativeDocumentMoniker": "BattleshipClient\\Factory\\SoundFactory.cs",
+              "ToolTip": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Factory\\SoundFactory.cs",
+              "RelativeToolTip": "BattleshipClient\\Factory\\SoundFactory.cs",
+              "ViewState": "AgIAAG8AAAAAAAAAAAAAAIIAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-26T12:38:57.197Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 15,
+              "Title": "Sound.cs",
+              "DocumentMoniker": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Factory\\Sound.cs",
+              "RelativeDocumentMoniker": "BattleshipClient\\Factory\\Sound.cs",
+              "ToolTip": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Factory\\Sound.cs",
+              "RelativeToolTip": "BattleshipClient\\Factory\\Sound.cs",
+              "ViewState": "AgIAAA8AAAAAAAAAAAAAABIAAAAhAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-26T12:36:57.103Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "MessageService.cs",
+              "DocumentMoniker": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Services\\MessageService.cs",
+              "RelativeDocumentMoniker": "BattleshipClient\\Services\\MessageService.cs",
+              "ToolTip": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Services\\MessageService.cs",
+              "RelativeToolTip": "BattleshipClient\\Services\\MessageService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-24T16:48:09.138Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 16,
               "Title": "ICommand.cs",
               "DocumentMoniker": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Commands\\ICommand.cs",
               "RelativeDocumentMoniker": "BattleshipClient\\Commands\\ICommand.cs",
@@ -82,19 +299,6 @@
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-10-24T16:35:48.64Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "GameCommandManager.cs",
-              "DocumentMoniker": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Commands\\GameCommandManager.cs",
-              "RelativeDocumentMoniker": "BattleshipClient\\Commands\\GameCommandManager.cs",
-              "ToolTip": "C:\\Users\\rugil\\Documents\\GitHub\\OPP-BattleshipSolution\\BattleshipClient\\Commands\\GameCommandManager.cs",
-              "RelativeToolTip": "BattleshipClient\\Commands\\GameCommandManager.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAACYAAAAxAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-10-24T16:35:38.581Z",
               "EditorCaption": ""
             }
           ]

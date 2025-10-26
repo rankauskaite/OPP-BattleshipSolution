@@ -10,41 +10,56 @@ namespace BattleshipClient
 {
     public enum CellState { Empty, Ship, Miss, Hit, Whole_ship_down }
 
+    // --- Pridėti lentos režimai (Bridge stiliaus „abstrakcijos“ idėja) ---
+    public enum BoardStyle
+    {
+        Classic,
+        Retro,
+        PowerUp,
+        Colorful
+    }
+
     public class GameBoard : Control
     {
         public int Size { get; private set; } = 10;
         public CellState[,] Cells;
         public int CellPx { get; set; } = 36;
-        public int LabelMargin { get; set; } = 25; // vieta raidėms/skaičiams
+        public int LabelMargin { get; set; } = 25;
 
-        // Tik kontūrui (skaičių nebėra)
         public bool ShowSunkOutlines { get; set; } = true;
+        public BoardStyle Style { get; private set; } = BoardStyle.Classic;
 
         public event EventHandler<Point> CellClicked;
-        public event Action<ShipData, Point> ShipDropped; // ship + cell
+        public event Action<ShipData, Point> ShipDropped;
         public List<ShipDto> Ships { get; set; } = new List<ShipDto>();
 
         public GameBoard()
         {
-            this.DoubleBuffered = true;
-            this.AllowDrop = true;
-            this.DragEnter += GameBoard_DragEnter;
-            this.DragDrop += GameBoard_DragDrop;
-            this.Width = CellPx * Size + LabelMargin + 1;
-            this.Height = CellPx * Size + LabelMargin + 1;
-            this.Cells = new CellState[this.Size, this.Size];
+            InitializeBoard(BoardStyle.Classic);
         }
 
-        public GameBoard(int size)
+        public GameBoard(int size, BoardStyle style = BoardStyle.Classic)
         {
-            this.Size = size;
-            this.DoubleBuffered = true;
-            this.AllowDrop = true;
-            this.DragEnter += GameBoard_DragEnter;
-            this.DragDrop += GameBoard_DragDrop;
-            this.Width = CellPx * Size + LabelMargin + 1;
-            this.Height = CellPx * Size + LabelMargin + 1;
-            this.Cells = new CellState[this.Size, this.Size];
+            Size = size;
+            InitializeBoard(style);
+        }
+
+        private void InitializeBoard(BoardStyle style)
+        {
+            Style = style;
+            DoubleBuffered = true;
+            AllowDrop = true;
+            DragEnter += GameBoard_DragEnter;
+            DragDrop += GameBoard_DragDrop;
+            Width = CellPx * Size + LabelMargin + 1;
+            Height = CellPx * Size + LabelMargin + 1;
+            Cells = new CellState[Size, Size];
+        }
+
+        public void SetStyle(BoardStyle style)
+        {
+            Style = style;
+            Invalidate();
         }
 
         public void SetCell(int x, int y, CellState state)
@@ -70,22 +85,17 @@ namespace BattleshipClient
 
         private void GameBoard_DragEnter(object sender, DragEventArgs e)
         {
-            if (e.Data.GetDataPresent(typeof(ShipData)))
-                e.Effect = DragDropEffects.Copy;
-            else
-                e.Effect = DragDropEffects.None;
+            e.Effect = e.Data.GetDataPresent(typeof(ShipData)) ? DragDropEffects.Copy : DragDropEffects.None;
         }
 
         private void GameBoard_DragDrop(object sender, DragEventArgs e)
         {
-            if (e.Data.GetDataPresent(typeof(ShipData)))
-            {
-                var ship = (ShipData)e.Data.GetData(typeof(ShipData));
-                Point client = PointToClient(new Point(e.X, e.Y));
-                int c = (client.X - LabelMargin) / CellPx;
-                int r = (client.Y - LabelMargin) / CellPx;
-                ShipDropped?.Invoke(ship, new Point(c, r));
-            }
+            if (!e.Data.GetDataPresent(typeof(ShipData))) return;
+            var ship = (ShipData)e.Data.GetData(typeof(ShipData));
+            Point client = PointToClient(new Point(e.X, e.Y));
+            int c = (client.X - LabelMargin) / CellPx;
+            int r = (client.Y - LabelMargin) / CellPx;
+            ShipDropped?.Invoke(ship, new Point(c, r));
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -94,13 +104,14 @@ namespace BattleshipClient
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.PixelOffsetMode = PixelOffsetMode.Half;
-            g.Clear(ColorTranslator.FromHtml("#f8f9fa"));
+
+            g.Clear(GetBackgroundColor());
 
             using var font = new Font("Arial", 10, FontStyle.Bold);
             using var brush = new SolidBrush(Color.Black);
             var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
 
-            // Raidės (A–J)
+            // Raidės
             for (int c = 0; c < Size; c++)
             {
                 string letter = ((char)('A' + c)).ToString();
@@ -108,7 +119,7 @@ namespace BattleshipClient
                 g.DrawString(letter, font, brush, rect, sf);
             }
 
-            // Skaičiai (1–10)
+            // Skaičiai
             for (int r = 0; r < Size; r++)
             {
                 string number = (r + 1).ToString();
@@ -116,38 +127,21 @@ namespace BattleshipClient
                 g.DrawString(number, font, brush, rect, sf);
             }
 
-            // Langeliai (užpildymas + grid)
+            // Langeliai
             for (int r = 0; r < Size; r++)
             {
                 for (int c = 0; c < Size; c++)
                 {
                     var rect = CellRectPx(c, r);
-                    switch (Cells[r, c])
-                    {
-                        case CellState.Empty:
-                            using (var b = new SolidBrush(ColorTranslator.FromHtml("#dbe9f7"))) g.FillRectangle(b, rect);
-                            break;
-                        case CellState.Ship:
-                            using (var b = new SolidBrush(ColorTranslator.FromHtml("#6c757d"))) g.FillRectangle(b, rect);
-                            break;
-                        case CellState.Hit:
-                            using (var b = new SolidBrush(ColorTranslator.FromHtml("#dc3545"))) g.FillRectangle(b, rect);
-                            break;
-                        case CellState.Miss:
-                            using (var b = new SolidBrush(ColorTranslator.FromHtml("#ffffff"))) g.FillRectangle(b, rect);
-                            break;
-                        case CellState.Whole_ship_down:
-                            using (var b = new SolidBrush(ColorTranslator.FromHtml("#781D26"))) g.FillRectangle(b, rect);
-                            break;
-                    }
-                    g.DrawRectangle(Pens.Black, rect);
+                    using (var b = new SolidBrush(GetCellColor(Cells[r, c])))
+                        g.FillRectangle(b, rect);
+
+                    g.DrawRectangle(GetGridPen(), rect);
                 }
             }
 
-            // Tikslus nuskendusių laivų kontūras (be skaičių)
             if (ShowSunkOutlines) DrawSunkShipPerimeter(g);
 
-            // Mano flotilės rėmeliai (jei naudojama šioje lentoje)
             using var pen = new Pen(Color.Black, 3);
             foreach (var ship in Ships)
             {
@@ -168,42 +162,107 @@ namespace BattleshipClient
                 CellClicked?.Invoke(this, new Point(c, r));
         }
 
-        // --- Helperiai ---
-
         private Rectangle CellRectPx(int x, int y)
             => new Rectangle(LabelMargin + x * CellPx, LabelMargin + y * CellPx, CellPx, CellPx);
 
-        /// <summary>
-        /// Piešia tik tas kraštines, kurios ribojasi su „ne nuskendusia“ ląstele – gaunasi tikslus išorinis kontūras.
-        /// </summary>
         private void DrawSunkShipPerimeter(Graphics g)
         {
             using var pen = new Pen(Color.Black, 3f) { Alignment = PenAlignment.Inset };
 
             for (int y = 0; y < Size; y++)
-            for (int x = 0; x < Size; x++)
             {
-                if (Cells[y, x] != CellState.Whole_ship_down) continue;
+                for (int x = 0; x < Size; x++)
+                {
+                    if (Cells[y, x] != CellState.Whole_ship_down) continue;
 
-                var r = CellRectPx(x, y);
-                int L = r.Left, T = r.Top, R = r.Right - 1, B = r.Bottom - 1;
+                    var r = CellRectPx(x, y);
+                    int L = r.Left, T = r.Top, R = r.Right - 1, B = r.Bottom - 1;
 
-                // viršus
-                if (y == 0 || Cells[y - 1, x] != CellState.Whole_ship_down)
-                    g.DrawLine(pen, L, T, R, T);
-
-                // apačia
-                if (y == Size - 1 || Cells[y + 1, x] != CellState.Whole_ship_down)
-                    g.DrawLine(pen, L, B, R, B);
-
-                // kairė
-                if (x == 0 || Cells[y, x - 1] != CellState.Whole_ship_down)
-                    g.DrawLine(pen, L, T, L, B);
-
-                // dešinė
-                if (x == Size - 1 || Cells[y, x + 1] != CellState.Whole_ship_down)
-                    g.DrawLine(pen, R, T, R, B);
+                    if (y == 0 || Cells[y - 1, x] != CellState.Whole_ship_down) g.DrawLine(pen, L, T, R, T);
+                    if (y == Size - 1 || Cells[y + 1, x] != CellState.Whole_ship_down) g.DrawLine(pen, L, B, R, B);
+                    if (x == 0 || Cells[y, x - 1] != CellState.Whole_ship_down) g.DrawLine(pen, L, T, L, B);
+                    if (x == Size - 1 || Cells[y, x + 1] != CellState.Whole_ship_down) g.DrawLine(pen, R, T, R, B);
+                }
             }
         }
+
+        // === Spalvos pagal stilių ===
+
+        private Color GetBackgroundColor()
+        {
+            return Style switch
+            {
+                BoardStyle.Retro => Color.FromArgb(245, 245, 235),
+                BoardStyle.PowerUp => Color.FromArgb(245, 250, 245),
+                BoardStyle.Colorful => Color.FromArgb(240, 245, 255),
+                _ => ColorTranslator.FromHtml("#f8f9fa"),
+            };
+        }
+
+        private Pen GetGridPen()
+        {
+            return Style switch
+            {
+                BoardStyle.Retro => Pens.DimGray,
+                BoardStyle.PowerUp => Pens.Black,
+                BoardStyle.Colorful => new Pen(Color.FromArgb(70, 70, 120)),
+                _ => Pens.Black,
+            };
+        }
+
+        private Color GetCellColor(CellState state)
+        {
+            return Style switch
+            {
+                BoardStyle.Retro => GetRetroColor(state),
+                BoardStyle.PowerUp => GetPowerUpColor(state),
+                BoardStyle.Colorful => GetColorfulColor(state),
+                _ => GetClassicColor(state),
+            };
+        }
+
+        // --- Classic (default) ---
+        private Color GetClassicColor(CellState s) => s switch
+        {
+            CellState.Empty => ColorTranslator.FromHtml("#dbe9f7"),
+            CellState.Ship => ColorTranslator.FromHtml("#6c757d"),
+            CellState.Hit => ColorTranslator.FromHtml("#dc3545"),
+            CellState.Miss => ColorTranslator.FromHtml("#ffffff"),
+            CellState.Whole_ship_down => ColorTranslator.FromHtml("#781D26"),
+            _ => ColorTranslator.FromHtml("#dbe9f7"),
+        };
+
+        // --- Retro ---
+        private Color GetRetroColor(CellState s) => s switch
+        {
+            CellState.Empty => Color.FromArgb(210, 230, 240),
+            CellState.Ship => Color.FromArgb(120, 120, 130),
+            CellState.Hit => Color.FromArgb(230, 90, 70),
+            CellState.Miss => Color.FromArgb(255, 255, 250),
+            CellState.Whole_ship_down => Color.FromArgb(100, 40, 50),
+            _ => Color.FromArgb(210, 230, 240),
+        };
+
+        // --- PowerUp ---
+        private Color GetPowerUpColor(CellState s) => s switch
+        {
+            CellState.Empty => Color.FromArgb(215, 235, 215),
+            CellState.Ship => Color.FromArgb(40, 160, 80),
+            CellState.Hit => Color.FromArgb(230, 50, 50),
+            CellState.Miss => Color.FromArgb(255, 255, 255),
+            CellState.Whole_ship_down => Color.FromArgb(100, 20, 30),
+            _ => Color.FromArgb(215, 235, 215),
+        };
+
+        // --- Colorful ---
+        private Color GetColorfulColor(CellState s) => s switch
+        {
+            CellState.Empty => Color.FromArgb(180, 215, 255),
+            CellState.Ship => Color.FromArgb(120, 70, 200),
+            CellState.Hit => Color.FromArgb(255, 50, 90),
+            CellState.Miss => Color.FromArgb(255, 250, 190),
+            CellState.Whole_ship_down => Color.FromArgb(100, 40, 130),
+            _ => Color.FromArgb(180, 215, 255),
+        };
     }
 }

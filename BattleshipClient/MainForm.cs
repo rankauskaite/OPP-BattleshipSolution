@@ -28,6 +28,7 @@ namespace BattleshipClient
         public Button btnSaveShipPlacement;
         public Button btnUseGameCopy;
         public Label lblStatus;
+        public Label lblScoreboardBottom;
         public Label lblPowerUpInfo;
         public GameBoard ownBoard { get; set; }
         public GameBoard enemyBoard { get; set; }
@@ -40,8 +41,9 @@ namespace BattleshipClient
         private bool plusActive = false, xActive = false, superActive = false; 
         private int plusUsed = 0, xUsed = 0, superUsed = 0;
         private const int MaxPlus = 1, MaxX = 1, MaxSuper = 1;
-        public NetworkClient net { get; private set; } = new NetworkClient(); 
-
+        public NetworkClient net { get; private set; } = new NetworkClient();
+        private ComboBox cmbBoardStyle;
+        private Label lblBoardStyle;
         private FlowLayoutPanel topBar;
 
 
@@ -64,7 +66,7 @@ namespace BattleshipClient
         // services
         private ShipPlacementService ShipPlacementService = new ShipPlacementService();
         private GameService GameService = new GameService();
-        private MessageService MessageService = new MessageService();
+        private MessageService MessageService;
 
         public List<ShipDto> Ships { get; set; } = new List<ShipDto>();
         private SoundFactory _factory = new SoundFactory();
@@ -85,7 +87,7 @@ namespace BattleshipClient
         private void InitializeComponents()
         {
             this.Text = "Battleship Client";
-            this.ClientSize = new Size(1050, 650);
+            this.ClientSize = new Size(1200, 700);
             this.BackColor = ColorTranslator.FromHtml("#f8f9fa");
 
             Label l1 = new Label { Text = "Server (ws):", Location = new Point(10, 10), AutoSize = true };
@@ -137,13 +139,13 @@ namespace BattleshipClient
             lblStatus = new Label { Text = "Not connected", Location = new Point(10, 40), AutoSize = true };
             lblPowerUpInfo = new Label { Location = new Point(10, 60), AutoSize = true, Visible = false };
 
-            ownBoard = new GameBoard { Location = new Point(80, 130) };
-            enemyBoard = new GameBoard { Location = new Point(550, 130) };
+            ownBoard = new GameBoard { Location = new Point(80, 150) };
+            enemyBoard = new GameBoard { Location = new Point(550, 150) };
             enemyBoard.CellClicked += EnemyBoard_CellClicked;
 
             shipPanel = new FlowLayoutPanel
             {
-                Location = new Point(80, 530),
+                Location = new Point(100, 530),
                 Size = new Size(450, 100),
                 AutoScroll = true,
                 BorderStyle = BorderStyle.FixedSingle,
@@ -155,7 +157,31 @@ namespace BattleshipClient
                 l1, txtServer, l2, txtName,
                 btnConnect, btnRandomize, btnPlaceShips, radioMiniGame, radioStandartGame, btnReady, btnSaveShipPlacement, btnUseGameCopy, btnDoubleBombPowerUp, btnGameOver,
                 lblStatus, lblPowerUpInfo, ownBoard, enemyBoard
-            }); 
+            });
+
+            // --- Lentos temos pasirinkimas ---
+            lblBoardStyle = new Label
+            {
+                Text = "Board Style:",
+                Location = new Point(1050, 8),
+                AutoSize = true
+            };
+
+            cmbBoardStyle = new ComboBox
+            {
+                Location = new Point(1050, 28),
+                Width = 100,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+
+            // Užpildom visus stilius
+            cmbBoardStyle.Items.AddRange(Enum.GetNames(typeof(BoardStyle)));
+            cmbBoardStyle.SelectedIndex = 0; // Classic pagal nutylėjimą
+            cmbBoardStyle.SelectedIndexChanged += CmbBoardStyle_SelectedIndexChanged;
+
+            // Pridedam į formą
+            this.Controls.Add(lblBoardStyle);
+            this.Controls.Add(cmbBoardStyle);
 
             topBar = new FlowLayoutPanel {
                 Dock = DockStyle.Top,
@@ -172,12 +198,26 @@ namespace BattleshipClient
             topBar.Controls.Add(btnSuper);
             topBar.Controls.Add(btnDoubleBombPowerUp);
 
+            lblScoreboardBottom = new Label
+            {
+                Name = "lblScoreboardBottom",
+                Text = "Scoreboard:",
+                Dock = DockStyle.Bottom,
+                Height = 70,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font(FontFamily.GenericSansSerif, 10, FontStyle.Bold),
+                BackColor = ColorTranslator.FromHtml("#e9ecef"),
+                Padding = new Padding(0, 6, 0, 6)
+            };
+            this.Controls.Add(lblScoreboardBottom);
+            this.Controls.SetChildIndex(lblScoreboardBottom, 0);
+
             btnReady.Enabled = false;
             _factory.Play(_factory.factoryMethod(MusicType.Background));
 
-            btnReplay = new Button { Text = "Replay", Location = new Point(600, 530), Width = 80, Height = 30, Visible = false };
-            btnPrev = new Button { Text = "◀ Prev", Location = new Point(700, 530), Width = 80, Height = 30, Visible = false };
-            btnNext = new Button { Text = "Next ▶", Location = new Point(800, 530), Width = 80, Height = 30, Visible = false };
+            btnReplay = new Button { Text = "Replay", Location = new Point(600, 550), Width = 80, Height = 30, Visible = false };
+            btnPrev = new Button { Text = "◀ Prev", Location = new Point(700, 550), Width = 80, Height = 30, Visible = false };
+            btnNext = new Button { Text = "Next ▶", Location = new Point(800, 550), Width = 80, Height = 30, Visible = false };
 
             btnReplay.Click += BtnReplay_Click;
             btnPrev.Click += BtnPrev_Click;
@@ -196,6 +236,7 @@ namespace BattleshipClient
                 await net.SendAsync(register);
                 btnConnect.Enabled = false;
                 myName = txtName.Text;
+                MessageService = new MessageService(myName);
             }
             catch (Exception ex)
             {
@@ -363,6 +404,9 @@ namespace BattleshipClient
             radioMiniGame.Enabled = false;
             radioStandartGame.Enabled = false;
             lblPowerUpInfo.Visible = true;
+            btnUseGameCopy.Visible = false;
+            btnSaveShipPlacement.Visible = true;
+            btnSaveShipPlacement.Enabled = true;
 
             if (factory.GetPowerups().TryGetValue("DoubleBomb", out int doubleBombsCount))
             {
@@ -436,10 +480,11 @@ namespace BattleshipClient
                 this.BeginInvoke(new Action(() => Net_OnMessageReceived(dto)));
                 return;
             }
+
+            if (MessageService == null) return;
+
             this.MessageService.HandleMessage(dto, this);
-        } 
-
-
+        }
 
         private void SyncPowerUpsUI()
         {
@@ -569,6 +614,42 @@ namespace BattleshipClient
         {
             if (isReplayMode && CommandManager.CanRedo)
                 CommandManager.Redo();
+        }
+
+        public void UpdateScoreboardUI(JsonElement payload)
+        {
+            try
+            {
+                var p1 = payload.GetProperty("p1").GetString();
+                var p2 = payload.GetProperty("p2").GetString();
+                var h1 = payload.GetProperty("hits1").GetInt32();
+                var h2 = payload.GetProperty("hits2").GetInt32();
+                var w1 = payload.GetProperty("wins1").GetInt32();
+                var w2 = payload.GetProperty("wins2").GetInt32();
+
+                lblScoreboardBottom.Text =
+                    "Scoreboard\n" +
+                    $"{p1}: Hits {h1}, Wins {w1}\n" +
+                    $"{p2}: Hits {h2}, Wins {w2}";
+            }
+            catch
+            {
+                lblScoreboardBottom.Text = "Scoreboard: (n/a)";
+            }
+        }
+
+        private void CmbBoardStyle_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (cmbBoardStyle.SelectedItem == null)
+                return;
+
+            // konvertuojam pasirinkimą į enum reikšmę
+            if (Enum.TryParse<BoardStyle>(cmbBoardStyle.SelectedItem.ToString(), out var selectedStyle))
+            {
+                ownBoard.SetStyle(selectedStyle);
+                enemyBoard.SetStyle(selectedStyle);
+                lblStatus.Text = $"Lentos tema pakeista į: {selectedStyle}";
+            }
         }
     }
 }

@@ -50,6 +50,7 @@ namespace BattleshipServer.GameFacade
                 game.SetIsGameOver(true);
                 game.SaveGameToDB(shooterId);
                 Console.WriteLine($"[Game] Game over. Winner: {shooterId.ToString()}");
+                await Scoreboard.Instance.AddWin(shooterId, game);
             }
             else
             {

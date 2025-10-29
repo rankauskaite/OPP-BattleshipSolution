@@ -15,8 +15,11 @@ namespace BattleshipClient
 {
     public class MainForm : Form
     {
+        // Text boxes:
         private TextBox txtServer;
         public TextBox txtName { get; private set; }
+
+        // Buttons:
         private Button btnConnect;
         private Button btnRandomize;
         public Button btnReady;
@@ -27,55 +30,61 @@ namespace BattleshipClient
         public Button btnDoubleBombPowerUp;
         public Button btnSaveShipPlacement;
         public Button btnUseGameCopy;
-        public Label lblStatus;
-        public Label lblScoreboardBottom;
-        public Label lblPowerUpInfo;
-        public GameBoard ownBoard { get; set; }
-        public GameBoard enemyBoard { get; set; }
-        public FlowLayoutPanel shipPanel;
         private Button btnPrev;
         private Button btnNext;
         public Button btnReplay;
-        private bool isReplayMode = false; 
         private Button btnPlus, btnX, btnSuper;
-        private bool plusActive = false, xActive = false, superActive = false; 
-        private int plusUsed = 0, xUsed = 0, superUsed = 0;
-        private const int MaxPlus = 1, MaxX = 1, MaxSuper = 1;
-        private GameTemplate gameTemplate;
-        private AbstractGameFactory abstractFactory;
-        public NetworkClient net { get; private set; } = new NetworkClient();
-        private ComboBox cmbBoardStyle;
+
+        // Labels:
+        public Label lblStatus;
+        public Label lblScoreboardBottom;
+        public Label lblPowerUpInfo;
         private Label lblBoardStyle;
+
+        // Panels and controls:
+        public FlowLayoutPanel shipPanel;
         private FlowLayoutPanel topBar;
+        private ComboBox cmbBoardStyle;
 
-
-        // state
+        // Objects related to game:
+        public GameBoard ownBoard { get; set; }
+        public GameBoard enemyBoard { get; set; }
+        private GameTemplate gameTemplate;
         public List<ShipDto> myShips { get; private set; } = new List<ShipDto>();
         public List<Ship> ownShips { get; private set; } = new List<Ship>();
-        public bool isMyTurn = false;
-        public bool doubleBombActive = false;
-        public int maxDoubleBombsCount = 0;
-        public int doubleBombsUsed = 0;
+        public List<ShipDto> Ships { get; set; } = new List<ShipDto>();
+
+
+        // Players info:
         public string myId { get; set; } = "";
         public string oppId { get; set; } = "";
         public string myName;
         public string oppName;
 
-        // drag & drop state
-        public bool placingShips = false;
-        private bool placingHorizontal = true;
 
-        // services
+        // helper bools and counters:
+        public bool isMyTurn = false;
+        public bool placingShips = false;   // drag & drop state
+        private bool placingHorizontal = true;  // drag & drop state
+        private bool isReplayMode = false;
+        private bool plusActive = false, xActive = false, superActive = false; 
+        private int plusUsed = 0, xUsed = 0, superUsed = 0;
+        private const int MaxPlus = 1, MaxX = 1, MaxSuper = 1;
+        public bool doubleBombActive = false;
+        public int maxDoubleBombsCount = 0;
+        public int doubleBombsUsed = 0;
+        bool powerUpsShown = false; // rodyti +/X/Super, kai žaidimas prasidėjęs
+
+        // factories and services
+        private AbstractGameFactory abstractFactory;
+        private SoundFactory _factory = new SoundFactory();
         private ShipPlacementService ShipPlacementService = new ShipPlacementService();
         private GameService GameService = new GameService();
         private MessageService MessageService;
 
-        public List<ShipDto> Ships { get; set; } = new List<ShipDto>();
-        private SoundFactory _factory = new SoundFactory();
+        // Other:
+        public NetworkClient net { get; private set; } = new NetworkClient();
         public GameCommandManager CommandManager = new GameCommandManager(); 
-        // viršuje prie laukų:
-        bool powerUpsShown = false; // rodyti +/X/Super, kai žaidimas prasidėjęs
-
 
         public MainForm()
         {

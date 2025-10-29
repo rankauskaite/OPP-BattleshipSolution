@@ -9,9 +9,10 @@ namespace BattleshipClient
 {
     public interface AbstractGameFactory
     {
-        int GetBoardSize();
-        List<int> GetShipsLength();
-        Dictionary<string, int> GetPowerups();
+        public int GetBoardSize();
+        public List<int> GetShipsLength();
+        public Dictionary<string, int> GetPowerups();
+        public GameTemplate CreateGame();
     }
 
     public class MiniGameFactory : AbstractGameFactory
@@ -24,6 +25,11 @@ namespace BattleshipClient
         {
             { "DoubleBomb",  2}
         };
+
+        public GameTemplate CreateGame()
+        {
+            return new GameTemplate(GetBoardSize(), GetShipsLength(), GetPowerups());
+        }
     }
 
     public class StandartGameFactory : AbstractGameFactory
@@ -34,5 +40,10 @@ namespace BattleshipClient
         {
             { "DoubleBomb",  1}
         };
+
+        public GameTemplate CreateGame()
+        {
+            return new GameTemplate(GetBoardSize(), GetShipsLength(), GetPowerups());
+        }
     }
 }

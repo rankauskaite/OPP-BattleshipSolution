@@ -41,6 +41,8 @@ namespace BattleshipClient
         private bool plusActive = false, xActive = false, superActive = false; 
         private int plusUsed = 0, xUsed = 0, superUsed = 0;
         private const int MaxPlus = 1, MaxX = 1, MaxSuper = 1;
+        private GameTemplate gameTemplate;
+        private AbstractGameFactory abstractFactory;
         public NetworkClient net { get; private set; } = new NetworkClient();
         private ComboBox cmbBoardStyle;
         private Label lblBoardStyle;
@@ -142,6 +144,8 @@ namespace BattleshipClient
             ownBoard = new GameBoard { Location = new Point(80, 150) };
             enemyBoard = new GameBoard { Location = new Point(550, 150) };
             enemyBoard.CellClicked += EnemyBoard_CellClicked;
+
+            this.gameTemplate = new GameTemplate(10);
 
             shipPanel = new FlowLayoutPanel
             {
@@ -246,11 +250,11 @@ namespace BattleshipClient
 
         private void BtnPlaceShips_Click(object sender, EventArgs e)
         {
-            AbstractGameFactory factory = this.ReloadBoard();
+            this.ReloadBoard();
 
-            this.GameService.ResetMyFormOnly(this, myShips.Count == factory.GetShipsLength().Count, true, true);
+            this.GameService.ResetMyFormOnly(this, myShips.Count == this.gameTemplate.Ships.Count, true, true);
 
-            this.ShipPlacementService.HandlePlaceShip(placingHorizontal, shipPanel, factory.GetShipsLength());
+            this.ShipPlacementService.HandlePlaceShip(placingHorizontal, shipPanel, this.gameTemplate.Ships);
 
             lblStatus.Text = "Drag ships onto your board. Use 'R' to rotate before dragging.";
         }
@@ -279,7 +283,7 @@ namespace BattleshipClient
 
             ownBoard.Ships = myShips;
             ownBoard.Invalidate();
-            btnReady.Enabled = myShips.Count == GetShipCount();
+            btnReady.Enabled = myShips.Count == this.gameTemplate.Ships.Count;
 
             var ctrl = shipPanel.Controls.Cast<Control>().FirstOrDefault(c => c.Tag is Guid g && g == ship.Id);
             if (ctrl != null) shipPanel.Controls.Remove(ctrl);
@@ -293,7 +297,7 @@ namespace BattleshipClient
             (bool successful_removal, int len) = this.ShipPlacementService.RemoveShip(this.myShips, this.ownBoard, this.shipPanel, p);
             if (successful_removal && len >= 0)
             {
-                btnReady.Enabled = myShips.Count == GetShipCount();
+                btnReady.Enabled = myShips.Count == this.gameTemplate.Ships.Count;
                 lblStatus.Text = $"Removed {len}-cell ship from board.";
             }
         }
@@ -350,22 +354,20 @@ namespace BattleshipClient
                 {
                     this.btnDoubleBombPowerUp.Enabled = false;
                     this.btnDoubleBombPowerUp.Visible = false;
-                    //SyncPowerUpsWithDoubleBomb();
                 }
                 UpdatePowerUpLabel();
             } 
-                                //SyncPowerUpsWithDoubleBomb();
             await net.SendAsync(shot);
         }
 
         private void BtnRandomize_Click(object sender, EventArgs e)
         {
-            AbstractGameFactory factory = this.ReloadBoard();
+            this.ReloadBoard();
             myShips.Clear();
-            (myShips, CellState[,] temp) = ShipPlacementService.RandomizeShips(factory.GetBoardSize(), factory.GetShipsLength());
+            (myShips, CellState[,] temp) = ShipPlacementService.RandomizeShips(this.gameTemplate.GameBoard.Size, this.gameTemplate.Ships);
             ownBoard.Ships = myShips;
             ownBoard.Invalidate();
-            btnReady.Enabled = myShips.Count == factory.GetShipsLength().Count;
+            btnReady.Enabled = myShips.Count == this.gameTemplate.Ships.Count;
 
             for (int r = 0; r < ownBoard.Size; r++)
                 for (int c = 0; c < ownBoard.Size; c++)
@@ -376,10 +378,9 @@ namespace BattleshipClient
 
         private async void BtnReady_Click(object sender, EventArgs e)
         {
-            AbstractGameFactory factory = radioMiniGame.Checked ? new MiniGameFactory() : new StandartGameFactory();
-            if (myShips.Count != factory.GetShipsLength().Count)
+            if (myShips.Count != this.gameTemplate.Ships.Count)
             {
-                MessageBox.Show($"You must place all {factory.GetShipsLength().Count} ships before pressing Ready.");
+                MessageBox.Show($"You must place all {this.gameTemplate.Ships.Count} ships before pressing Ready.");
                 return;
             }
 
@@ -408,7 +409,7 @@ namespace BattleshipClient
             btnSaveShipPlacement.Visible = true;
             btnSaveShipPlacement.Enabled = true;
 
-            if (factory.GetPowerups().TryGetValue("DoubleBomb", out int doubleBombsCount))
+            if (this.gameTemplate.Powerups.TryGetValue("DoubleBomb", out int doubleBombsCount))
             {
                 this.maxDoubleBombsCount = doubleBombsCount;
                 this.doubleBombsUsed = 0;
@@ -428,11 +429,10 @@ namespace BattleshipClient
 
         private async void BtnPlayBot_Click(object sender, EventArgs e)
         {
-            AbstractGameFactory factory = radioMiniGame.Checked ? new MiniGameFactory() : new StandartGameFactory();
-            if (myShips.Count != factory.GetShipsLength().Count)
+            if (myShips.Count != this.gameTemplate.Ships.Count)
             {
                 myShips.Clear();
-                (myShips, CellState[,] temp) = ShipPlacementService.RandomizeShips(factory.GetBoardSize(), factory.GetShipsLength());
+                (myShips, CellState[,] temp) = ShipPlacementService.RandomizeShips(this.gameTemplate.GameBoard.Size, this.gameTemplate.Ships);
                 ownBoard.Ships = myShips;
                 ownBoard.Invalidate();
                 for (int r = 0; r < ownBoard.Size; r++)
@@ -455,7 +455,7 @@ namespace BattleshipClient
             this.btnSuper.Visible = true;
 
             // (nebūtina, bet jei nori – kopija iš BtnReady_Click: įjungia Double Bomb pagal factory)
-            if (factory.GetPowerups().TryGetValue("DoubleBomb", out int doubleBombsCount))
+            if (this.gameTemplate.Powerups.TryGetValue("DoubleBomb", out int doubleBombsCount))
             {
                 this.maxDoubleBombsCount = doubleBombsCount;
                 this.doubleBombsUsed = 0;
@@ -562,21 +562,35 @@ namespace BattleshipClient
             this.btnUseGameCopy.Enabled = false;
         }
 
-        private AbstractGameFactory ReloadBoard()
+        private void ReloadBoard()
         {
-            AbstractGameFactory factory = radioMiniGame.Checked ? new MiniGameFactory() : new StandartGameFactory();
+            if (this.ownBoard != null)
+            {
+                this.ownBoard.ShipDropped -= OwnBoard_ShipDropped;
+                this.ownBoard.CellClicked -= OwnBoard_CellClickedForRemoval;
+            }
+            if (this.enemyBoard != null)
+            {
+                this.enemyBoard.CellClicked -= EnemyBoard_CellClicked;
+            }
+
             this.Controls.Remove(ownBoard);
             this.Controls.Remove(enemyBoard);
 
-            this.ownBoard = new GameBoard(factory.GetBoardSize()) { Location = new Point(80, 130) };
+            this.abstractFactory = radioMiniGame.Checked ? new MiniGameFactory() : new StandartGameFactory();
+            this.gameTemplate = this.abstractFactory.CreateGame();
+
+            this.ownBoard = this.gameTemplate.GameBoard;
+            this.ownBoard.Location = new Point(80, 130);
             this.ownBoard.ShipDropped += OwnBoard_ShipDropped;
             this.ownBoard.CellClicked += OwnBoard_CellClickedForRemoval;
-            this.enemyBoard = new GameBoard(factory.GetBoardSize()) { Location = new Point(550, 130) };
+
+            this.enemyBoard = this.gameTemplate.EnemyBoard;
+            this.enemyBoard.Location = new Point(550, 130);
             this.enemyBoard.CellClicked += EnemyBoard_CellClicked;
 
             this.Controls.Add(ownBoard);
             this.Controls.Add(enemyBoard);
-            return factory;
         }
 
         private void UpdatePowerUpLabel()
@@ -586,9 +600,7 @@ namespace BattleshipClient
 
         public int GetShipCount()
         {
-            AbstractGameFactory factory = radioMiniGame.Checked ? new MiniGameFactory() : new StandartGameFactory();
-
-            return factory.GetShipsLength().Count;
+            return this.gameTemplate.Ships.Count;
         }
 
         private void BtnReplay_Click(object sender, EventArgs e)

@@ -378,8 +378,6 @@ namespace BattleshipClient
 
         private async void BtnReady_Click(object sender, EventArgs e)
         {
-            this.gameTemplate = radioMiniGame.Checked ? this.factory.CreateMiniGame() : this.factory.CreateStandartGame();
-            //AbstractGameFactory factory = radioMiniGame.Checked ? new MiniGameFactory() : new StandartGameFactory();
             if (myShips.Count != this.gameTemplate.Ships.Count)
             {
                 MessageBox.Show($"You must place all {this.gameTemplate.Ships.Count} ships before pressing Ready.");
@@ -567,6 +565,16 @@ namespace BattleshipClient
 
         private void ReloadBoard()
         {
+            if (this.ownBoard != null)
+            {
+                this.ownBoard.ShipDropped -= OwnBoard_ShipDropped;
+                this.ownBoard.CellClicked -= OwnBoard_CellClickedForRemoval;
+            }
+            if (this.enemyBoard != null)
+            {
+                this.enemyBoard.CellClicked -= EnemyBoard_CellClicked;
+            }
+
             this.Controls.Remove(ownBoard);
             this.Controls.Remove(enemyBoard);
 

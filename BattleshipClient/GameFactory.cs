@@ -7,22 +7,15 @@ using System.Threading.Tasks;
 
 namespace BattleshipClient
 {
-    public class AbstractGameFactory
+    public interface AbstractGameFactory
     {
-        public GameTemplate CreateStandartGame()
-        {
-            StandartGameFactory factory = new StandartGameFactory();
-            return new GameTemplate(factory.GetBoardSize(), factory.GetShipsLength(), factory.GetPowerups());
-        }
-
-        public GameTemplate CreateMiniGame()
-        {
-            MiniGameFactory factory = new MiniGameFactory();
-            return new GameTemplate(factory.GetBoardSize(), factory.GetShipsLength(), factory.GetPowerups());
-        }
+        public int GetBoardSize();
+        public List<int> GetShipsLength();
+        public Dictionary<string, int> GetPowerups();
+        public GameTemplate CreateGame();
     }
 
-    public class MiniGameFactory
+    public class MiniGameFactory : AbstractGameFactory
     {
         public int GetBoardSize() => 6;
 
@@ -32,9 +25,14 @@ namespace BattleshipClient
         {
             { "DoubleBomb",  2}
         };
+
+        public GameTemplate CreateGame()
+        {
+            return new GameTemplate(GetBoardSize(), GetShipsLength(), GetPowerups());
+        }
     }
 
-    public class StandartGameFactory
+    public class StandartGameFactory : AbstractGameFactory
     {
         public int GetBoardSize() => 10;
         public List<int> GetShipsLength() => new List<int> { 4, 3, 3, 2, 2, 2, 1, 1, 1, 1 };
@@ -42,5 +40,10 @@ namespace BattleshipClient
         {
             { "DoubleBomb",  1}
         };
+
+        public GameTemplate CreateGame()
+        {
+            return new GameTemplate(GetBoardSize(), GetShipsLength(), GetPowerups());
+        }
     }
 }

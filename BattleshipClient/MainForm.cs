@@ -42,7 +42,7 @@ namespace BattleshipClient
         private int plusUsed = 0, xUsed = 0, superUsed = 0;
         private const int MaxPlus = 1, MaxX = 1, MaxSuper = 1;
         private GameTemplate gameTemplate;
-        private AbstractGameFactory factory = new AbstractGameFactory();
+        private AbstractGameFactory factory;
         public NetworkClient net { get; private set; } = new NetworkClient();
         private ComboBox cmbBoardStyle;
         private Label lblBoardStyle;
@@ -429,7 +429,6 @@ namespace BattleshipClient
 
         private async void BtnPlayBot_Click(object sender, EventArgs e)
         {
-            this.gameTemplate = radioMiniGame.Checked ? this.factory.CreateMiniGame() : this.factory.CreateStandartGame();
             if (myShips.Count != this.gameTemplate.Ships.Count)
             {
                 myShips.Clear();
@@ -578,7 +577,8 @@ namespace BattleshipClient
             this.Controls.Remove(ownBoard);
             this.Controls.Remove(enemyBoard);
 
-            this.gameTemplate = radioMiniGame.Checked ? this.factory.CreateMiniGame() : this.factory.CreateStandartGame();
+            this.factory = radioMiniGame.Checked ? new MiniGameFactory() : new StandartGameFactory();
+            this.gameTemplate = this.factory.CreateGame();
 
             this.ownBoard = this.gameTemplate.GameBoard;
             this.ownBoard.Location = new Point(80, 130);

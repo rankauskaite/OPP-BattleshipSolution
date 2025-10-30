@@ -1,26 +1,16 @@
 ﻿using System;
-using System.IO;
-using NAudio.Wave;
 
 namespace BattleshipClient.Factory
 {
-    // Abstraktus kūrėjas (Creator)
     public interface ISoundFactory
     {
-        ISound factoryMethod(HitType hitType);
-        ISound factoryMethod(MusicType musicType);
-        void Play(ISound sound);
-        void StopBackground();
+        ISound CreateHitSound(HitType hitType);
+        ISound CreateMusicSound(MusicType musicType);
     }
 
-    // Konkretus kūrėjas (ConcreteCreator) su pagrindine logika
     public class SoundFactory : ISoundFactory
     {
-        private IWavePlayer? backgroundPlayer;
-        private AudioFileReader? backgroundReader;
-        private bool loopBackground = true;
-
-        public ISound factoryMethod(HitType hitType)
+        public ISound CreateHitSound(HitType hitType)
         {
             return hitType switch
             {
@@ -31,7 +21,7 @@ namespace BattleshipClient.Factory
             };
         }
 
-        public ISound factoryMethod(MusicType musicType)
+        public ISound CreateMusicSound(MusicType musicType)
         {
             return musicType switch
             {
@@ -40,93 +30,6 @@ namespace BattleshipClient.Factory
                 MusicType.GameEnd => new Sound("Sounds/game_end.wav"),
                 _ => throw new ArgumentException("Unknown music type")
             };
-        }
-
-        public void Play(ISound sound)
-        {
-            if (sound.IsBackground)
-                PlayBackground(sound.Path);
-            else
-                PlayEffect(sound.Path);
-        }
-
-        public void StopBackground()
-        {
-            try
-            {
-                loopBackground = false;
-                if (backgroundPlayer != null)
-                {
-                    backgroundPlayer.Stop();
-                    backgroundPlayer.Dispose();
-                    backgroundPlayer = null;
-                }
-
-                if (backgroundReader != null)
-                {
-                    backgroundReader.Dispose();
-                    backgroundReader = null;
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Failed to stop background: " + ex.Message);
-            }
-        }
-
-        private void PlayBackground(string path)
-        {
-            try
-            {
-                StopBackground();
-
-                backgroundReader = new AudioFileReader(path);
-                backgroundPlayer = new WaveOutEvent();
-                backgroundPlayer.Init(backgroundReader);
-                loopBackground = true;
-
-                backgroundPlayer.PlaybackStopped += (s, e) =>
-                {
-                    if (loopBackground && backgroundReader != null && backgroundPlayer != null)
-                    {
-                        backgroundReader.Position = 0;
-                        backgroundPlayer.Play();
-                    }
-                };
-
-                backgroundPlayer.Play();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Failed to play background: " + ex.Message);
-            }
-        }
-
-        private void PlayEffect(string path)
-        {
-            try
-            {
-                if (!File.Exists(path))
-                {
-                    Console.WriteLine($"Sound file not found: {path}");
-                    return;
-                }
-
-                var reader = new AudioFileReader(path);
-                var player = new WaveOutEvent();
-                player.Init(reader);
-                player.Play();
-
-                player.PlaybackStopped += (s, e) =>
-                {
-                    player.Dispose();
-                    reader.Dispose();
-                };
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Sound effect error: " + ex.Message);
-            }
         }
     }
 }

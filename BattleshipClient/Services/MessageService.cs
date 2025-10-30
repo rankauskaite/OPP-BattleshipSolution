@@ -3,19 +3,21 @@ using BattleshipClient.Observers;
 using BattleshipClient.Factory;
 using System.Windows.Forms;
 using System.Text.Json;
+using BattleshipClient.Services;
 
 namespace BattleshipClient.Services
 {
     class MessageService
     {
         private readonly GameEventManager _eventManager = new();
-        private readonly SoundFactory _factory = new SoundFactory();
+        private readonly SoundService _soundService;
         private readonly string _localPlayerName;
 
         public MessageService(string localPlayerName)
         {
             _localPlayerName = localPlayerName;
-            _eventManager.Attach(new SoundObserver());
+            _soundService = new SoundService(new SoundFactory());
+            _eventManager.Attach(new SoundObserver(_soundService));
             _eventManager.Attach(new LoggerObserver(_localPlayerName));
         }
 
@@ -34,21 +36,22 @@ namespace BattleshipClient.Services
                     if (dto.Payload.TryGetProperty("opponent", out var on)) form.oppName = on.GetString();
                     if (dto.Payload.TryGetProperty("current", out var cur))
                         form.isMyTurn = cur.GetString() == form.myId;
+
                     form.lblStatus.Text = $"Game started. Opponent: {dto.Payload.GetProperty("opponent").GetString()}. Your turn: {form.isMyTurn}";
-                    _factory.Play(_factory.factoryMethod(MusicType.GameStart));
+                    _soundService.PlayMusic(MusicType.GameStart);
                     break;
+
                 case "shipInfo":
                     if (dto.Payload.TryGetProperty("message", out var me1))
                         form.lblStatus.Text = me1.GetString();
                     if (dto.Payload.TryGetProperty("ships", out var shipsJson))
                     {
                         var ships = JsonSerializer.Deserialize<List<ShipDto>>(shipsJson.GetRawText(), new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                        if (ships == null)
-                        {
-                            break;
-                        }
+                        if (ships == null) break;
+
                         var gameService = new GameService();
                         gameService.ResetMyFormOnly(form, true, true, true);
+
                         foreach (var ship in ships)
                         {
                             bool horiz = ship.dir == "H";
@@ -60,6 +63,7 @@ namespace BattleshipClient.Services
                         form.btnReady.Enabled = form.myShips.Count == form.GetShipCount();
                     }
                     break;
+
                 case "turn":
                     if (dto.Payload.TryGetProperty("current", out var cur2))
                     {
@@ -105,7 +109,6 @@ namespace BattleshipClient.Services
                                 _eventManager.Notify("MISS", shooterName);
                                 break;
                         }
-
                         break;
                     }
 
@@ -116,7 +119,10 @@ namespace BattleshipClient.Services
                         string winnerName = winner == form.myId ? form.myName : form.oppName;
                         form.lblStatus.Text = winner == form.myId ? "You WON! Game over." : "You lost. Game over.";
                         MessageBox.Show(form.lblStatus.Text, "Game Over");
+
                         _eventManager.Notify(winner == form.myId ? "WIN" : "LOSE", winnerName);
+                        _soundService.PlayMusic(MusicType.GameEnd);
+
                         form.btnGameOver.Visible = true;
                         form.btnReplay.Visible = true;
                         form.isMyTurn = false;

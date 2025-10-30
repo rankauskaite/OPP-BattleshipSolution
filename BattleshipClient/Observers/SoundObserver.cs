@@ -1,26 +1,33 @@
 using BattleshipClient.Factory;
+using BattleshipClient.Services;
 
 namespace BattleshipClient.Observers
 {
     public class SoundObserver : IGameObserver
     {
+        private readonly SoundService _soundService;
+
+        public SoundObserver(SoundService soundService)
+        {
+            _soundService = soundService;
+        }
+
         public void OnGameEvent(string eventType, string playerName, object? data = null)
         {
-            SoundFactory factory = new SoundFactory();
             switch (eventType)
             {
                 case "HIT":
-                    factory.Play(factory.factoryMethod(HitType.Hit));
+                    _soundService.PlayHit(HitType.Hit);
                     break;
                 case "MISS":
-                    factory.Play(factory.factoryMethod(HitType.Miss));
+                    _soundService.PlayHit(HitType.Miss);
                     break;
                 case "EXPLOSION":
-                    factory.Play(factory.factoryMethod(HitType.Explosion));
+                    _soundService.PlayHit(HitType.Explosion);
                     break;
                 case "WIN":
                 case "LOSE":
-                    factory.Play(factory.factoryMethod(MusicType.GameEnd));
+                    _soundService.PlayMusic(MusicType.GameEnd);
                     break;
             }
         }

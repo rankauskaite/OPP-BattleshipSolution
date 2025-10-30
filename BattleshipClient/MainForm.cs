@@ -33,6 +33,8 @@ namespace BattleshipClient
         private Button btnPrev;
         private Button btnNext;
         public Button btnReplay;
+        private Button btnToStart;
+        private Button btnToEnd;
         private Button btnPlus, btnX, btnSuper;
 
         // Labels:
@@ -77,9 +79,9 @@ namespace BattleshipClient
 
         // factories and services
         private AbstractGameFactory abstractFactory;
-        private SoundFactory _factory = new SoundFactory();
         private ShipPlacementService ShipPlacementService = new ShipPlacementService();
         private GameService GameService = new GameService();
+        private SoundService soundService = new SoundService(new SoundFactory());
         private MessageService MessageService;
 
         // Other:
@@ -226,17 +228,21 @@ namespace BattleshipClient
             this.Controls.SetChildIndex(lblScoreboardBottom, 0);
 
             btnReady.Enabled = false;
-            _factory.Play(_factory.factoryMethod(MusicType.Background));
+            soundService.PlayMusic(MusicType.Background);
 
-            btnReplay = new Button { Text = "Replay", Location = new Point(600, 550), Width = 80, Height = 30, Visible = false };
+            btnReplay = new Button { Text = "Replay", Location = new Point(480, 550), Width = 80, Height = 30, Visible = false };
+            btnToStart = new Button { Text = "⏮ Start", Location = new Point(600, 550), Width = 80, Height = 30, Visible = false };
             btnPrev = new Button { Text = "◀ Prev", Location = new Point(700, 550), Width = 80, Height = 30, Visible = false };
             btnNext = new Button { Text = "Next ▶", Location = new Point(800, 550), Width = 80, Height = 30, Visible = false };
+            btnToEnd = new Button { Text = "End ⏭", Location = new Point(900, 550), Width = 80, Height = 30, Visible = false };
 
+            btnToStart.Click += BtnToStart_Click;
+            btnToEnd.Click += BtnToEnd_Click;
             btnReplay.Click += BtnReplay_Click;
             btnPrev.Click += BtnPrev_Click;
             btnNext.Click += BtnNext_Click;
 
-            this.Controls.AddRange(new Control[] { btnReplay, btnPrev, btnNext });
+            this.Controls.AddRange(new Control[] { btnReplay, btnPrev, btnNext, btnToStart, btnToEnd });
         }
 
         private async void BtnConnect_Click(object sender, EventArgs e)
@@ -515,7 +521,7 @@ namespace BattleshipClient
             if (result == DialogResult.Yes)
             {
                 this.GameService.ResetForm(this, false);
-                _factory.Play(_factory.factoryMethod(MusicType.Background));
+                soundService.PlayMusic(MusicType.Background);
                 this.btnPlaceShips.Enabled = true;
                 this.btnRandomize.Enabled = true;
                 this.btnReady.Enabled = true;
@@ -622,7 +628,11 @@ namespace BattleshipClient
 
             isReplayMode = true;
             lblStatus.Text = "Replay Mode Active";
-            btnPrev.Visible = btnNext.Visible = true;
+
+            btnPrev.Visible = true;
+            btnNext.Visible = true;
+            btnToStart.Visible = true;
+            btnToEnd.Visible = true;
         }
 
         private void BtnPrev_Click(object sender, EventArgs e)
@@ -635,6 +645,24 @@ namespace BattleshipClient
         {
             if (isReplayMode && CommandManager.CanRedo)
                 CommandManager.Redo();
+        }
+
+        private void BtnToStart_Click(object sender, EventArgs e)
+        {
+            if (isReplayMode)
+            {
+                CommandManager.UndoAll();
+                lblStatus.Text = "Returned to game start.";
+            }
+        }
+
+        private void BtnToEnd_Click(object sender, EventArgs e)
+        {
+            if (isReplayMode)
+            {
+                CommandManager.RedoAll();
+                lblStatus.Text = "Jumped to latest move.";
+            }
         }
 
         public void UpdateScoreboardUI(JsonElement payload)

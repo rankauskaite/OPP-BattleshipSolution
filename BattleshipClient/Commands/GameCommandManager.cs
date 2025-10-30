@@ -5,37 +5,52 @@ namespace BattleshipClient.Commands
 {
     public class GameCommandManager
     {
-        private readonly List<ICommand> _commands = new();
-        private int _currentIndex = -1;
+        private readonly Stack<ICommand> _undoStack = new Stack<ICommand>();
+        private readonly Stack<ICommand> _redoStack = new Stack<ICommand>();
+
+        public int TotalCommands => _undoStack.Count + _redoStack.Count;
+        public bool CanUndo => _undoStack.Count > 0;
+        public bool CanRedo => _redoStack.Count > 0;
 
         public void ExecuteCommand(ICommand command)
         {
             command.Execute();
-            _commands.Add(command);
-            _currentIndex = _commands.Count - 1;
+            _undoStack.Push(command);
+            _redoStack.Clear();
         }
 
         public void Undo()
         {
-            if (_currentIndex >= 0)
-            {
-                _commands[_currentIndex].Undo();
-                _currentIndex--;
-            }
+            if (!CanUndo) return;
+            var cmd = _undoStack.Pop();
+            cmd.Undo();
+            _redoStack.Push(cmd);
         }
 
         public void Redo()
         {
-            if (_currentIndex + 1 < _commands.Count)
-            {
-                _currentIndex++;
-                _commands[_currentIndex].Execute();
-            }
+            if (!CanRedo) return;
+            var cmd = _redoStack.Pop();
+            cmd.Execute();
+            _undoStack.Push(cmd);
         }
 
-        public bool CanUndo => _currentIndex >= 0;
-        public bool CanRedo => _currentIndex + 1 < _commands.Count;
-        public int TotalCommands => _commands.Count;
-        public int CurrentIndex => _currentIndex;
+        public void UndoAll()
+        {
+            while (CanUndo)
+                Undo();
+        }
+
+        public void RedoAll()
+        {
+            while (CanRedo)
+                Redo();
+        }
+
+        public void Reset()
+        {
+            _undoStack.Clear();
+            _redoStack.Clear();
+        }
     }
 }

@@ -1,15 +1,18 @@
+using System.Collections.Generic;
+
 namespace BattleshipServer.PowerUps
 {
     public interface IShotPattern
     {
-        IEnumerable<(int x,int y)> GetCells(int x, int y, int w = 10, int h = 10);
+        IEnumerable<Shot> GetShots(Shot origin, int w = 10, int h = 10);
     }
 
     public sealed class SingleCellPattern : IShotPattern
     {
-        public IEnumerable<(int x,int y)> GetCells(int x, int y, int w = 10, int h = 10)
+        public IEnumerable<Shot> GetShots(Shot origin, int w = 10, int h = 10)
         {
-            if (x>=0 && x<w && y>=0 && y<h) yield return (x,y);
+            if (origin.X >= 0 && origin.X < w && origin.Y >= 0 && origin.Y < h)
+                yield return origin;
         }
     }
 
@@ -17,7 +20,10 @@ namespace BattleshipServer.PowerUps
     {
         protected readonly IShotPattern Inner;
         protected ShotPatternDecorator(IShotPattern inner) => Inner = inner;
-        public abstract IEnumerable<(int x,int y)> GetCells(int x, int y, int w = 10, int h = 10);
-        protected static bool In(int x,int y,int w,int h) => x>=0 && x<w && y>=0 && y<h;
+
+        public abstract IEnumerable<Shot> GetShots(Shot origin, int w = 10, int h = 10);
+
+        protected static bool In(int x, int y, int w, int h) =>
+            x >= 0 && x < w && y >= 0 && y < h;
     }
 }

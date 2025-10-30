@@ -5,7 +5,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
+using System.Threading.Tasks; 
+using BattleshipServer.PowerUps;
+
 
 namespace BattleshipServer.GameFacade
 {
@@ -77,8 +79,10 @@ namespace BattleshipServer.GameFacade
                 await messageService.SendErrorAsync(playerService.GetPlayer(shooterId, game), "Game already finished");
                 return;
             }
-
-            shotService.ProcessCompositeShot(game, shooterId, x0, y0, isDoubleBomb, plusShape, xShape, superDamage);
+             var origin = new Shot(x0, y0);
+                shotService.ProcessCompositeShot(game, shooterId, origin,
+                isDoubleBomb, plusShape, xShape, superDamage);
+            //shotService.ProcessCompositeShot(game, shooterId, x0, y0, isDoubleBomb, plusShape, xShape, superDamage);
 
         }
 

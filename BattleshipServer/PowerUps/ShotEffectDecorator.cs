@@ -1,4 +1,3 @@
-// ShotEffectDecorator.cs (NAUJAS)
 using System.Collections.Generic;
 
 namespace BattleshipServer.PowerUps
@@ -8,10 +7,7 @@ namespace BattleshipServer.PowerUps
         protected readonly IShotEffect Inner;
         protected ShotEffectDecorator(IShotEffect inner) => Inner = inner;
 
-        public virtual bool AfterCellHit(int x, int y, int[,] board, List<Game.Ship> ships)
-        {
-            // Pagal nutylėjimą – deleguojam „žemyn“, tada galim pridėti savo veiksmą.
-            return Inner?.AfterCellHit(x, y, board, ships) ?? false;
-        }
+        public virtual bool AfterCellHit(Shot shot, int[,] board, List<Game.Ship> ships) =>
+            Inner?.AfterCellHit(shot, board, ships) ?? false;
     }
 }

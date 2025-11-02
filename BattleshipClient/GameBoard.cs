@@ -5,6 +5,8 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Windows.Forms;
+using BattleshipClient.Views;
+using BattleshipClient.Views.Renderers;
 
 namespace BattleshipClient
 {
@@ -16,11 +18,13 @@ namespace BattleshipClient
         Classic,
         Retro,
         PowerUp,
-        Colorful
+        Colorful,
+        Console
     }
 
     public class GameBoard : Control
     {
+        private BoardView _consoleView;
         public int Size { get; private set; } = 10;
         public CellState[,] Cells;
         public int CellPx { get; set; } = 36;
@@ -59,6 +63,10 @@ namespace BattleshipClient
         public void SetStyle(BoardStyle style)
         {
             Style = style;
+
+            if (Style == BoardStyle.Console && _consoleView == null)
+                _consoleView = new ConsoleBoardView();
+
             Invalidate();
         }
 
@@ -150,6 +158,17 @@ namespace BattleshipClient
                 int w = (ship.dir == "H" ? ship.len : 1) * CellPx;
                 int h = (ship.dir == "V" ? ship.len : 1) * CellPx;
                 g.DrawRectangle(pen, x, y, w, h);
+            }
+
+            // --- Papildomas piešimas į konsolę ---
+            if (Style == BoardStyle.Console)
+            {
+                try
+                {
+                    if (_consoleView == null) _consoleView = new ConsoleBoardView();
+                    _consoleView.DrawBoard(this);
+                }
+                catch { }
             }
         }
 

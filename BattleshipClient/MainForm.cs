@@ -69,7 +69,7 @@ namespace BattleshipClient
         public bool placingShips = false;   // drag & drop state
         private bool placingHorizontal = true;  // drag & drop state
         private bool isReplayMode = false;
-        private bool plusActive = false, xActive = false, superActive = false; 
+        private bool plusActive = false, xActive = false, superActive = false;
         private int plusUsed = 0, xUsed = 0, superUsed = 0;
         private const int MaxPlus = 1, MaxX = 1, MaxSuper = 1;
         public bool doubleBombActive = false;
@@ -86,7 +86,7 @@ namespace BattleshipClient
 
         // Other:
         public NetworkClient net { get; private set; } = new NetworkClient();
-        public GameCommandManager CommandManager = new GameCommandManager(); 
+        public GameCommandManager CommandManager = new GameCommandManager();
 
         public MainForm()
         {
@@ -135,18 +135,18 @@ namespace BattleshipClient
             btnUseGameCopy = new Button { Text = "Use saved placement", Location = new Point(840, 44), AutoSize = true, Visible = true };
             btnUseGameCopy.Click += BtnUseGameCopy_Click;
 
-            btnGameOver = new Button { Text = "Game Over", Location = new Point(400, 44), Width = 100, Height = 30, Visible = false }; 
+            btnGameOver = new Button { Text = "Game Over", Location = new Point(400, 44), Width = 100, Height = 30, Visible = false };
 
 
-            btnPlus  = new Button { Text = "+ Shot",  Visible = false, Enabled = false, AutoSize = true };
-            btnX     = new Button { Text = "X Shot",  Visible = false, Enabled = false, AutoSize = true };
-            btnSuper = new Button { Text = "Super",   Visible = false, Enabled = false, AutoSize = true };
+            btnPlus = new Button { Text = "+ Shot", Visible = false, Enabled = false, AutoSize = true };
+            btnX = new Button { Text = "X Shot", Visible = false, Enabled = false, AutoSize = true };
+            btnSuper = new Button { Text = "Super", Visible = false, Enabled = false, AutoSize = true };
 
-            btnPlus.Click  += (s,e)=> { if (plusUsed  >= MaxPlus) return; plusActive  = !plusActive;  btnPlus.BackColor  = plusActive  ? Color.LightGreen : SystemColors.Control; };
-            btnX.Click     += (s,e)=> { if (xUsed     >= MaxX)    return; xActive     = !xActive;     btnX.BackColor     = xActive     ? Color.LightGreen : SystemColors.Control; };
-            btnSuper.Click += (s,e)=> { if (superUsed >= MaxSuper)return; superActive = !superActive; btnSuper.BackColor = superActive ? Color.LightGreen : SystemColors.Control; };
+            btnPlus.Click += (s, e) => { if (plusUsed >= MaxPlus) return; plusActive = !plusActive; btnPlus.BackColor = plusActive ? Color.LightGreen : SystemColors.Control; };
+            btnX.Click += (s, e) => { if (xUsed >= MaxX) return; xActive = !xActive; btnX.BackColor = xActive ? Color.LightGreen : SystemColors.Control; };
+            btnSuper.Click += (s, e) => { if (superUsed >= MaxSuper) return; superActive = !superActive; btnSuper.BackColor = superActive ? Color.LightGreen : SystemColors.Control; };
 
-            this.Controls.AddRange(new Control[]{ btnPlus, btnX, btnSuper });
+            this.Controls.AddRange(new Control[] { btnPlus, btnX, btnSuper });
 
 
             lblStatus = new Label { Text = "Not connected", Location = new Point(10, 40), AutoSize = true };
@@ -198,7 +198,8 @@ namespace BattleshipClient
             this.Controls.Add(lblBoardStyle);
             this.Controls.Add(cmbBoardStyle);
 
-            topBar = new FlowLayoutPanel {
+            topBar = new FlowLayoutPanel
+            {
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
@@ -207,7 +208,7 @@ namespace BattleshipClient
             };
             this.Controls.Add(topBar);
 
-            topBar.Controls.Add(btnPlayBot); 
+            topBar.Controls.Add(btnPlayBot);
             topBar.Controls.Add(btnPlus);
             topBar.Controls.Add(btnX);
             topBar.Controls.Add(btnSuper);
@@ -353,12 +354,12 @@ namespace BattleshipClient
                     xShape = this.xActive,
                     superDamage = this.superActive
                 }
-            }; 
-            if (plusActive)  { plusActive = false; plusUsed  = MaxPlus;  btnPlus.Enabled  = false; btnPlus.Text  = "+ Shot (used)"; btnPlus.BackColor  = SystemColors.Control; }
-            if (xActive)     { xActive    = false; xUsed     = MaxX;     btnX.Enabled     = false; btnX.Text     = "X Shot (used)";  btnX.BackColor     = SystemColors.Control; }
-            if (superActive) { superActive= false; superUsed = MaxSuper; btnSuper.Enabled = false; btnSuper.Text = "Super (used)";   btnSuper.BackColor = SystemColors.Control; }
+            };
+            if (plusActive) { plusActive = false; plusUsed = MaxPlus; btnPlus.Enabled = false; btnPlus.Text = "+ Shot (used)"; btnPlus.BackColor = SystemColors.Control; }
+            if (xActive) { xActive = false; xUsed = MaxX; btnX.Enabled = false; btnX.Text = "X Shot (used)"; btnX.BackColor = SystemColors.Control; }
+            if (superActive) { superActive = false; superUsed = MaxSuper; btnSuper.Enabled = false; btnSuper.Text = "Super (used)"; btnSuper.BackColor = SystemColors.Control; }
 
-           SyncPowerUpsUI();
+            SyncPowerUpsUI();
 
             if (this.doubleBombActive)
             {
@@ -371,7 +372,7 @@ namespace BattleshipClient
                     this.btnDoubleBombPowerUp.Visible = false;
                 }
                 UpdatePowerUpLabel();
-            } 
+            }
             await net.SendAsync(shot);
         }
 
@@ -435,11 +436,11 @@ namespace BattleshipClient
             plusUsed = xUsed = superUsed = 0;      // reset skaitiklių
             plusActive = xActive = superActive = false;
             btnPlus.Text = "+ Shot"; btnPlus.BackColor = SystemColors.Control;
-            btnX.Text = "X Shot";   btnX.BackColor   = SystemColors.Control;
-            btnSuper.Text = "Super";btnSuper.BackColor= SystemColors.Control;
+            btnX.Text = "X Shot"; btnX.BackColor = SystemColors.Control;
+            btnSuper.Text = "Super"; btnSuper.BackColor = SystemColors.Control;
 
             powerUpsShown = true;                  // Žaidimas prasidėjo – rodom
-            SyncPowerUpsUI();     
+            SyncPowerUpsUI();
         }
 
         private async void BtnPlayBot_Click(object sender, EventArgs e)
@@ -477,15 +478,15 @@ namespace BattleshipClient
                 this.btnDoubleBombPowerUp.Enabled = true;
                 this.btnDoubleBombPowerUp.Visible = true;
                 UpdatePowerUpLabel();
-            } 
+            }
             plusUsed = xUsed = superUsed = 0;
             plusActive = xActive = superActive = false;
             btnPlus.Text = "+ Shot"; btnPlus.BackColor = SystemColors.Control;
-            btnX.Text = "X Shot";   btnX.BackColor   = SystemColors.Control;
-            btnSuper.Text = "Super";btnSuper.BackColor= SystemColors.Control;
+            btnX.Text = "X Shot"; btnX.BackColor = SystemColors.Control;
+            btnSuper.Text = "Super"; btnSuper.BackColor = SystemColors.Control;
 
             powerUpsShown = true;
-            SyncPowerUpsUI(); 
+            SyncPowerUpsUI();
         }
 
         private void Net_OnMessageReceived(MessageDto dto)
@@ -504,13 +505,13 @@ namespace BattleshipClient
         private void SyncPowerUpsUI()
         {
             // Matomumas: tik ar žaidimas vyksta
-            btnPlus.Visible  = powerUpsShown;
-            btnX.Visible     = powerUpsShown;
+            btnPlus.Visible = powerUpsShown;
+            btnX.Visible = powerUpsShown;
             btnSuper.Visible = powerUpsShown;
 
             // Įjungimas: jei dar nepanaudota
-            btnPlus.Enabled  = powerUpsShown && (plusUsed  < MaxPlus);
-            btnX.Enabled     = powerUpsShown && (xUsed     < MaxX);
+            btnPlus.Enabled = powerUpsShown && (plusUsed < MaxPlus);
+            btnX.Enabled = powerUpsShown && (xUsed < MaxX);
             btnSuper.Enabled = powerUpsShown && (superUsed < MaxSuper);
         }
 
@@ -530,7 +531,7 @@ namespace BattleshipClient
                 this.btnSaveShipPlacement.Visible = false;
                 this.btnNext.Visible = false;
                 this.btnPrev.Visible = false;
-                this.btnReplay.Visible = false; 
+                this.btnReplay.Visible = false;
                 powerUpsShown = false;
                 SyncPowerUpsUI();
             }
@@ -558,7 +559,7 @@ namespace BattleshipClient
             {
                 this.doubleBombActive = false;
                 this.btnDoubleBombPowerUp.Enabled = false;
-                this.btnDoubleBombPowerUp.Visible = false; 
+                this.btnDoubleBombPowerUp.Visible = false;
                 SyncPowerUpsUI();
             }
         }

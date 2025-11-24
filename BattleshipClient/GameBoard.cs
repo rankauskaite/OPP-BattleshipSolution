@@ -7,6 +7,7 @@ using System.Linq;
 using System.Windows.Forms;
 using BattleshipClient.Views;
 using BattleshipClient.Views.Renderers;
+using BattleshipClient.Flyweight;
 
 namespace BattleshipClient
 {
@@ -113,7 +114,8 @@ namespace BattleshipClient
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.PixelOffsetMode = PixelOffsetMode.Half;
 
-            g.Clear(GetBackgroundColor());
+            var fw = CellFlyweightFactory.Get(Style);
+            g.Clear(fw.BackgroundColor);
 
             using var font = new Font("Arial", 10, FontStyle.Bold);
             using var brush = new SolidBrush(Color.Black);
@@ -141,10 +143,10 @@ namespace BattleshipClient
                 for (int c = 0; c < Size; c++)
                 {
                     var rect = CellRectPx(c, r);
-                    using (var b = new SolidBrush(GetCellColor(Cells[r, c])))
+                    using (var b = new SolidBrush(fw.GetCellColor(Cells[r, c])))
                         g.FillRectangle(b, rect);
 
-                    g.DrawRectangle(GetGridPen(), rect);
+                    g.DrawRectangle(fw.Pen, rect);
                 }
             }
 
@@ -204,84 +206,5 @@ namespace BattleshipClient
                 }
             }
         }
-
-        // === Spalvos pagal stilių ===
-
-        private Color GetBackgroundColor()
-        {
-            return Style switch
-            {
-                BoardStyle.Retro => Color.FromArgb(245, 245, 235),
-                BoardStyle.PowerUp => Color.FromArgb(245, 250, 245),
-                BoardStyle.Colorful => Color.FromArgb(240, 245, 255),
-                _ => ColorTranslator.FromHtml("#f8f9fa"),
-            };
-        }
-
-        private Pen GetGridPen()
-        {
-            return Style switch
-            {
-                BoardStyle.Retro => Pens.DimGray,
-                BoardStyle.PowerUp => Pens.Black,
-                BoardStyle.Colorful => new Pen(Color.FromArgb(70, 70, 120)),
-                _ => Pens.Black,
-            };
-        }
-
-        private Color GetCellColor(CellState state)
-        {
-            return Style switch
-            {
-                BoardStyle.Retro => GetRetroColor(state),
-                BoardStyle.PowerUp => GetPowerUpColor(state),
-                BoardStyle.Colorful => GetColorfulColor(state),
-                _ => GetClassicColor(state),
-            };
-        }
-
-        // --- Classic (default) ---
-        private Color GetClassicColor(CellState s) => s switch
-        {
-            CellState.Empty => ColorTranslator.FromHtml("#dbe9f7"),
-            CellState.Ship => ColorTranslator.FromHtml("#6c757d"),
-            CellState.Hit => ColorTranslator.FromHtml("#dc3545"),
-            CellState.Miss => ColorTranslator.FromHtml("#ffffff"),
-            CellState.Whole_ship_down => ColorTranslator.FromHtml("#781D26"),
-            _ => ColorTranslator.FromHtml("#dbe9f7"),
-        };
-
-        // --- Retro ---
-        private Color GetRetroColor(CellState s) => s switch
-        {
-            CellState.Empty => Color.FromArgb(210, 230, 240),
-            CellState.Ship => Color.FromArgb(120, 120, 130),
-            CellState.Hit => Color.FromArgb(230, 90, 70),
-            CellState.Miss => Color.FromArgb(255, 255, 250),
-            CellState.Whole_ship_down => Color.FromArgb(100, 40, 50),
-            _ => Color.FromArgb(210, 230, 240),
-        };
-
-        // --- PowerUp ---
-        private Color GetPowerUpColor(CellState s) => s switch
-        {
-            CellState.Empty => Color.FromArgb(215, 235, 215),
-            CellState.Ship => Color.FromArgb(40, 160, 80),
-            CellState.Hit => Color.FromArgb(230, 50, 50),
-            CellState.Miss => Color.FromArgb(255, 255, 255),
-            CellState.Whole_ship_down => Color.FromArgb(100, 20, 30),
-            _ => Color.FromArgb(215, 235, 215),
-        };
-
-        // --- Colorful ---
-        private Color GetColorfulColor(CellState s) => s switch
-        {
-            CellState.Empty => Color.FromArgb(180, 215, 255),
-            CellState.Ship => Color.FromArgb(120, 70, 200),
-            CellState.Hit => Color.FromArgb(255, 50, 90),
-            CellState.Miss => Color.FromArgb(255, 250, 190),
-            CellState.Whole_ship_down => Color.FromArgb(100, 40, 130),
-            _ => Color.FromArgb(180, 215, 255),
-        };
     }
 }

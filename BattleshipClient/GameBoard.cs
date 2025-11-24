@@ -7,6 +7,7 @@ using System.Linq;
 using System.Windows.Forms;
 using BattleshipClient.Views;
 using BattleshipClient.Views.Renderers;
+using BattleshipClient.Iterators;
 
 namespace BattleshipClient
 {
@@ -135,18 +136,31 @@ namespace BattleshipClient
                 g.DrawString(number, font, brush, rect, sf);
             }
 
-            // Langeliai
-            for (int r = 0; r < Size; r++)
-            {
-                for (int c = 0; c < Size; c++)
-                {
-                    var rect = CellRectPx(c, r);
-                    using (var b = new SolidBrush(GetCellColor(Cells[r, c])))
-                        g.FillRectangle(b, rect);
 
-                    g.DrawRectangle(GetGridPen(), rect);
-                }
+            // Langeliai (Iterator pattern)
+            foreach (var p in new RowMajorCells(Size))
+            {
+                int c = p.X, r = p.Y;
+                var rect = CellRectPx(c, r);
+                using (var b = new SolidBrush(GetCellColor(Cells[r, c])))
+                    g.FillRectangle(b, rect);
+
+                g.DrawRectangle(GetGridPen(), rect);
             }
+
+
+            // // Langeliai
+            // for (int r = 0; r < Size; r++)
+            // {
+            //     for (int c = 0; c < Size; c++)
+            //     {
+            //         var rect = CellRectPx(c, r);
+            //         using (var b = new SolidBrush(GetCellColor(Cells[r, c])))
+            //             g.FillRectangle(b, rect);
+
+            //         g.DrawRectangle(GetGridPen(), rect);
+            //     }
+            // }
 
             if (ShowSunkOutlines) DrawSunkShipPerimeter(g);
 

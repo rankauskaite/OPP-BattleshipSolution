@@ -23,13 +23,28 @@ namespace BattleshipServer.GameFacade
             await player2.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult });
         }
 
-        public async Task SendShotInfo(PlayerConnection player1, PlayerConnection player2, Guid shooterId, PlayerConnection target, int x, int y, bool hit, bool wholeDown)
+        public async Task SendShotInfo(PlayerConnection player1, PlayerConnection player2,
+                                    Guid shooterId, PlayerConnection target,
+                                    int x, int y, bool hit, bool wholeDown, bool wasShield)
         {
-            var shotResult = JsonSerializer.SerializeToElement(new { x, y, result = hit && !wholeDown ? "hit" : hit && wholeDown ? "whole_ship_down" : "miss", shooterId = shooterId.ToString(), targetId = target.Id.ToString() });
+            string result =
+                wasShield   ? "shield" :
+                wholeDown   ? "whole_ship_down" :
+                hit         ? "hit" :
+                            "miss";
+
+            var shotResult = JsonSerializer.SerializeToElement(new
+            {
+                x,
+                y,
+                result,
+                shooterId = shooterId.ToString(),
+                targetId = target.Id.ToString()
+            });
+
             await player1.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult });
             await player2.SendAsync(new Models.MessageDto { Type = "shotResult", Payload = shotResult });
         }
-
         public async Task SendGameOverAsync(PlayerConnection player1, PlayerConnection player2, Guid winnerId)
         {
             var goPayload = JsonSerializer.SerializeToElement(new { winnerId = winnerId.ToString() });

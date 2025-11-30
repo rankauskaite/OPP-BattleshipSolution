@@ -32,7 +32,8 @@ namespace BattleshipClient.Flyweight
                         [CellState.Ship] = Color.FromArgb(120, 120, 130),
                         [CellState.Hit] = Color.FromArgb(230, 90, 70),
                         [CellState.Miss] = Color.FromArgb(255, 255, 250),
-                        [CellState.Whole_ship_down] = Color.FromArgb(100, 40, 50)
+                        [CellState.Whole_ship_down] = Color.FromArgb(100, 40, 50),
+                        [CellState.Shielded] = Color.FromArgb(150, 200, 255)
                     }),
 
                 BoardStyle.PowerUp => new CellFlyweight(
@@ -44,7 +45,8 @@ namespace BattleshipClient.Flyweight
                         [CellState.Ship] = Color.FromArgb(40, 160, 80),
                         [CellState.Hit] = Color.FromArgb(230, 50, 50),
                         [CellState.Miss] = Color.White,
-                        [CellState.Whole_ship_down] = Color.FromArgb(100, 20, 30)
+                        [CellState.Whole_ship_down] = Color.FromArgb(100, 20, 30), 
+                        [CellState.Shielded] = Color.FromArgb(150, 200, 255)
                     }),
 
                 BoardStyle.Colorful => new CellFlyweight(
@@ -56,7 +58,8 @@ namespace BattleshipClient.Flyweight
                         [CellState.Ship] = Color.FromArgb(120, 70, 200),
                         [CellState.Hit] = Color.FromArgb(255, 50, 90),
                         [CellState.Miss] = Color.FromArgb(255, 250, 190),
-                        [CellState.Whole_ship_down] = Color.FromArgb(100, 40, 130)
+                        [CellState.Whole_ship_down] = Color.FromArgb(100, 40, 130), 
+                        [CellState.Shielded] = Color.FromArgb(150, 200, 255)
                     }),
 
                 _ => new CellFlyweight(
@@ -68,7 +71,8 @@ namespace BattleshipClient.Flyweight
                         [CellState.Ship] = ColorTranslator.FromHtml("#6c757d"),
                         [CellState.Hit] = ColorTranslator.FromHtml("#dc3545"),
                         [CellState.Miss] = Color.White,
-                        [CellState.Whole_ship_down] = ColorTranslator.FromHtml("#781D26")
+                        [CellState.Whole_ship_down] = ColorTranslator.FromHtml("#781D26"),
+                        [CellState.Shielded] = Color.FromArgb(150, 200, 255)
                     })
             };
         }

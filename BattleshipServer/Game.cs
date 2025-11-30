@@ -6,7 +6,9 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
-using BattleshipServer.GameFacade;
+using BattleshipServer.GameFacade; 
+using BattleshipServer.Defense;
+
 
 using BattleshipServer.PowerUps;
 
@@ -25,14 +27,17 @@ namespace BattleshipServer
         public Guid CurrentPlayerId { get; private set; }
 
         private readonly int[,] _board1 = new int[10, 10];
-        private readonly int[,] _board2 = new int[10, 10];
+        private readonly int[,] _board2 = new int[10, 10]; 
+
+        private readonly DefenseComposite _defense1 = new DefenseComposite();
+        private readonly DefenseComposite _defense2 = new DefenseComposite();
         private bool isStandartGame1 = true;
         private bool isStandartGame2 = true;
         private readonly List<Ship> _ships1 = new();
         private readonly List<Ship> _ships2 = new();
         private readonly GameManager _manager;
         private readonly Database _db;
-        private readonly GameFacade.GameFacade gameFacade = new GameFacade.GameFacade();
+        private readonly GameFacade.GameFacade gameFacade = new GameFacade.GameFacade(); 
 
         public bool IsReady => _ships1.Count > 0 && _ships2.Count > 0;
         public bool GameModesMatch => isStandartGame1 == isStandartGame2;
@@ -125,7 +130,40 @@ namespace BattleshipServer
         public (int[,], List<Ship>) GetBoard2AndShips()
         {
             return (_board2, _ships2);
+        }  
+
+        public DefenseComposite GetDefenseForPlayer(Guid playerId)
+        {
+            if (playerId == Player1.Id) return _defense1;
+            if (playerId == Player2.Id) return _defense2;
+            throw new ArgumentException("Invalid playerId", nameof(playerId));
         }
+
+        public void AddDefense(Guid playerId, IDefenseComponent component)
+        {
+            if (playerId == Player1.Id)
+                _defense1.Add(component);
+            else if (playerId == Player2.Id)
+                _defense2.Add(component);
+            else
+                throw new ArgumentException("Invalid playerId", nameof(playerId));
+        }
+
+        public void AddCellShield(Guid playerId, int x, int y, DefenseMode mode)
+        {
+            AddDefense(playerId, new CellShield(x, y, mode));
+        }
+
+
+        public void AddAreaShield(Guid playerId, int x1, int y1, int x2, int y2, DefenseMode mode)
+        {
+            AddDefense(playerId, new AreaShield(x1, y1, x2, y2, mode));
+        }
+
+
+
+        
+
 
         public bool GetIsGameOver()
         {

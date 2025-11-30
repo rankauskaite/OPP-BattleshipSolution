@@ -35,7 +35,9 @@ namespace BattleshipClient
         public Button btnReplay;
         private Button btnToStart;
         private Button btnToEnd;
-        private Button btnPlus, btnX, btnSuper;
+        private Button btnPlus, btnX, btnSuper; 
+        private Button btnShieldSafe, btnShieldInvisible;
+
 
         // Labels:
         public Label lblStatus;
@@ -75,7 +77,12 @@ namespace BattleshipClient
         public bool doubleBombActive = false;
         public int maxDoubleBombsCount = 0;
         public int doubleBombsUsed = 0;
-        bool powerUpsShown = false; // rodyti +/X/Super, kai žaidimas prasidėjęs
+        bool powerUpsShown = false; // rodyti +/X/Super, kai žaidimas prasidėjęs 
+
+        private bool shieldSafeActive = false, shieldInvisibleActive = false;
+        private int safeShieldsUsed = 0, invisibleShieldsUsed = 0;
+        private const int MaxSafeShields = 2;
+        private const int MaxInvisibleShields = 2;
 
         // factories and services
         private AbstractGameFactory abstractFactory;
@@ -146,7 +153,28 @@ namespace BattleshipClient
             btnX.Click += (s, e) => { if (xUsed >= MaxX) return; xActive = !xActive; btnX.BackColor = xActive ? Color.LightGreen : SystemColors.Control; };
             btnSuper.Click += (s, e) => { if (superUsed >= MaxSuper) return; superActive = !superActive; btnSuper.BackColor = superActive ? Color.LightGreen : SystemColors.Control; };
 
-            this.Controls.AddRange(new Control[] { btnPlus, btnX, btnSuper });
+            this.Controls.AddRange(new Control[] { btnPlus, btnX, btnSuper }); 
+
+            btnShieldSafe = new Button { Text = "Shield (Safe)", Visible = false, Enabled = false, AutoSize = true };
+            btnShieldInvisible = new Button { Text = "Shield (Invisible)", Visible = false, Enabled = false, AutoSize = true };
+
+            btnShieldSafe.Click += (s, e) =>
+            {
+                if (safeShieldsUsed >= MaxSafeShields) return;
+                shieldSafeActive = !shieldSafeActive;
+                shieldInvisibleActive = false;
+                btnShieldSafe.BackColor = shieldSafeActive ? Color.LightGreen : SystemColors.Control;
+                btnShieldInvisible.BackColor = SystemColors.Control;
+            };
+
+            btnShieldInvisible.Click += (s, e) =>
+            {
+                if (invisibleShieldsUsed >= MaxInvisibleShields) return;
+                shieldInvisibleActive = !shieldInvisibleActive;
+                shieldSafeActive = false;
+                btnShieldInvisible.BackColor = shieldInvisibleActive ? Color.LightGreen : SystemColors.Control;
+                btnShieldSafe.BackColor = SystemColors.Control;
+            };
 
 
             lblStatus = new Label { Text = "Not connected", Location = new Point(10, 40), AutoSize = true };
@@ -212,7 +240,9 @@ namespace BattleshipClient
             topBar.Controls.Add(btnPlus);
             topBar.Controls.Add(btnX);
             topBar.Controls.Add(btnSuper);
-            topBar.Controls.Add(btnDoubleBombPowerUp);
+            topBar.Controls.Add(btnDoubleBombPowerUp); 
+            topBar.Controls.Add(btnShieldSafe);
+            topBar.Controls.Add(btnShieldInvisible);
 
             lblScoreboardBottom = new Label
             {
@@ -440,7 +470,16 @@ namespace BattleshipClient
             btnSuper.Text = "Super"; btnSuper.BackColor = SystemColors.Control;
 
             powerUpsShown = true;                  // Žaidimas prasidėjo – rodom
-            SyncPowerUpsUI();
+            SyncPowerUpsUI(); 
+            this.ownBoard.CellClicked -= OwnBoard_CellClickedForRemoval;
+            this.ownBoard.CellClicked += OwnBoard_CellClickedForShield;
+
+            safeShieldsUsed = invisibleShieldsUsed = 0;
+            shieldSafeActive = shieldInvisibleActive = false;
+            btnShieldSafe.Text = "Shield (Safe)";
+            btnShieldInvisible.Text = "Shield (Invisible)";
+            btnShieldSafe.BackColor = SystemColors.Control;
+            btnShieldInvisible.BackColor = SystemColors.Control;
         }
 
         private async void BtnPlayBot_Click(object sender, EventArgs e)
@@ -504,16 +543,20 @@ namespace BattleshipClient
 
         private void SyncPowerUpsUI()
         {
-            // Matomumas: tik ar žaidimas vyksta
             btnPlus.Visible = powerUpsShown;
             btnX.Visible = powerUpsShown;
             btnSuper.Visible = powerUpsShown;
+            btnShieldSafe.Visible = powerUpsShown;
+            btnShieldInvisible.Visible = powerUpsShown;
 
-            // Įjungimas: jei dar nepanaudota
             btnPlus.Enabled = powerUpsShown && (plusUsed < MaxPlus);
             btnX.Enabled = powerUpsShown && (xUsed < MaxX);
             btnSuper.Enabled = powerUpsShown && (superUsed < MaxSuper);
+
+            btnShieldSafe.Enabled = powerUpsShown && (safeShieldsUsed < MaxSafeShields);
+            btnShieldInvisible.Enabled = powerUpsShown && (invisibleShieldsUsed < MaxInvisibleShields);
         }
+
 
 
         private async void BtnGameOver_Click(object sender, EventArgs e)
@@ -541,7 +584,56 @@ namespace BattleshipClient
             }
 
             btnGameOver.Visible = false;
+        } 
+
+        private async void OwnBoard_CellClickedForShield(object sender, Point p)
+        {
+            if (!powerUpsShown) return;
+            if (!(shieldSafeActive || shieldInvisibleActive)) return;
+
+            string mode = shieldSafeActive ? "safetiness" : "visibility";
+
+            var msg = new
+            {
+                type = "placeShield",
+                payload = new
+                {
+                    x = p.X,
+                    y = p.Y,
+                    mode = mode
+                }
+            };
+
+            await net.SendAsync(msg);
+
+            // sunaudojam shield'ą
+            if (shieldSafeActive)
+            {
+                shieldSafeActive = false;
+                safeShieldsUsed++;
+                btnShieldSafe.BackColor = SystemColors.Control;
+                if (safeShieldsUsed >= MaxSafeShields)
+                {
+                    btnShieldSafe.Enabled = false;
+                    btnShieldSafe.Text = "Shield (Safe) used";
+                }
+            }
+
+            if (shieldInvisibleActive)
+            {
+                shieldInvisibleActive = false;
+                invisibleShieldsUsed++;
+                btnShieldInvisible.BackColor = SystemColors.Control;
+                if (invisibleShieldsUsed >= MaxInvisibleShields)
+                {
+                    btnShieldInvisible.Enabled = false;
+                    btnShieldInvisible.Text = "Shield (Invisible) used";
+                }
+            }
+
+            SyncPowerUpsUI();
         }
+
 
         public void BtnDoubleBombPowerUp_Click(object sender, EventArgs e)
         {

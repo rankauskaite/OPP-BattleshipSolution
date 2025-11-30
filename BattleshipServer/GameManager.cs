@@ -82,6 +82,9 @@ namespace BattleshipServer
                     break;
                 case "playBot":
                     gameManagerFacade.HandlePlayBot(this, player, dto, _db);
+                    break; 
+                case "placeShield":
+                    await gameManagerFacade.HandlePlaceShield(this, player, dto);
                     break;
                 default:
                     Console.WriteLine($"[Manager] Unknown message type: {dto.Type}");

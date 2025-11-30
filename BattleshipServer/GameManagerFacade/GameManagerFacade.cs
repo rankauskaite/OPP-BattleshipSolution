@@ -6,7 +6,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
+using System.Threading.Tasks; 
+using BattleshipServer.Defense;
+
 
 namespace BattleshipServer.GameManagerFacade
 {
@@ -47,6 +49,9 @@ namespace BattleshipServer.GameManagerFacade
                 Console.WriteLine($"[Manager] Player {player.Name} placed {ships.Count} ships.");
                 if (game.IsReady && game.GameModesMatch)
                 {
+                    // ČIA įjungiame random gynybą su Area + Cell shields
+                    //DefenseSetup.SetupRandomDefense(game);
+
                     await game.StartGame();
                 }
                 else if (!game.GameModesMatch)
@@ -116,7 +121,51 @@ namespace BattleshipServer.GameManagerFacade
                     await botGame.bot.MaybePlayAsync();
                 }
             }
+        } 
+
+        public async Task HandlePlaceShield(GameManager manager, PlayerConnection player, MessageDto dto)
+        {
+            if (dto.Payload.ValueKind != JsonValueKind.Object)
+                return;
+
+            if (!dto.Payload.TryGetProperty("x", out var xe) ||
+                !dto.Payload.TryGetProperty("y", out var ye))
+                return;
+
+            int x = xe.GetInt32();
+            int y = ye.GetInt32();
+
+            string modeStr = "safetiness";
+            if (dto.Payload.TryGetProperty("mode", out var me) && me.ValueKind == JsonValueKind.String)
+            {
+                modeStr = me.GetString() ?? "safetiness";
+            }
+
+            // PVP žaidimas, kuriame žaidžia šis player'io Id
+            Game? game = manager.GetPlayersGame(player.Id);
+            if (game == null)
+                return;
+
+            // Jei tai NPC žaidimas – iš viso ignoruojam (nenorim skydo prieš botą)
+            var botGame = manager.GetBotGame(player.Id);
+            if (botGame.bot != null)
+                return;
+
+            DefenseMode mode = modeStr == "visibility"
+                ? DefenseMode.Visibility
+                : DefenseMode.Safetiness;
+
+            // Composite: pridedam vieno langelio skydą
+            game.AddCellShield(player.Id, x, y, mode);
+
+            // Optional: informacinė žinutė klientui
+            var payload = JsonSerializer.SerializeToElement(new
+            {
+                message = $"Placed {mode} shield at {x},{y}"
+            });
+            await player.SendAsync(new MessageDto { Type = "info", Payload = payload });
         }
+
 
         public void HandlePlayBot(GameManager manager, PlayerConnection player, MessageDto dto, Database db)
         {

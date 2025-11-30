@@ -1,0 +1,114 @@
+==== Naujas žaidimas ====
+14:15:14 - Player nepataikė
+14:15:14 - Player nepataikė
+14:15:14 - Player nepataikė
+14:15:14 - Player nepataikė
+14:15:14 - Player nepataikė
+14:15:14 - Player nepataikė
+14:15:14 - Player nepataikė
+14:15:14 - Player nepataikė
+14:15:14 - Player nepataikė
+14:15:14 - Player nepataikė
+14:15:14 - Player nepataikė
+14:15:14 - Player nepataikė
+14:15:14 - Player nepataikė
+14:15:14 - Player nepataikė
+14:15:14 - Player nepataikė
+14:15:14 - Player pataikė
+14:15:14 - Player pataikė
+14:15:14 - Player nuskandino laivą
+14:15:14 - Player nuskandino laivą
+14:15:19 - Player nepataikė
+14:15:19 - Player nepataikė
+14:15:24 - Player pataikė
+14:15:24 - Player pataikė
+14:15:25 - Player nuskandino laivą
+14:15:25 - Player nuskandino laivą
+14:15:25 - Player nuskandino laivą
+14:15:25 - Player nuskandino laivą
+14:15:25 - Player nuskandino laivą
+14:15:25 - Player nuskandino laivą
+14:15:26 - Player nepataikė
+14:15:26 - Player nepataikė
+14:15:30 - Player pataikė
+14:15:30 - Player pataikė
+14:15:31 - Player pataikė
+14:15:31 - Player pataikė
+14:15:31 - Player nuskandino laivą
+14:15:31 - Player nuskandino laivą
+14:15:31 - Player nuskandino laivą
+14:15:31 - Player nuskandino laivą
+14:15:31 - Player nuskandino laivą
+14:15:31 - Player nuskandino laivą
+14:15:31 - Player nuskandino laivą
+14:15:31 - Player nuskandino laivą
+14:15:34 - Player pataikė
+14:15:34 - Player pataikė
+14:15:35 - Player pataikė
+14:15:35 - Player pataikė
+14:15:35 - Player nuskandino laivą
+14:15:35 - Player nuskandino laivą
+14:15:35 - Player nuskandino laivą
+14:15:35 - Player nuskandino laivą
+14:15:35 - Player nuskandino laivą
+14:15:35 - Player nuskandino laivą
+14:15:35 - Player nuskandino laivą
+14:15:35 - Player nuskandino laivą
+14:15:40 - Player pataikė
+14:15:41 - Player pataikė
+14:15:44 - Player nuskandino laivą
+14:15:44 - Player nuskandino laivą
+14:15:44 - Player nuskandino laivą
+14:15:44 - Player nuskandino laivą
+14:15:44 - Player nuskandino laivą
+14:15:45 - Player nuskandino laivą
+14:15:55 - Player nuskandino laivą
+14:15:55 - Player nuskandino laivą
+14:15:55 - Player nuskandino laivą
+14:15:55 - Player nuskandino laivą
+14:15:59 - Player pataikė
+14:15:59 - Player pataikė
+14:16:00 - Player nuskandino laivą
+14:16:00 - Player nuskandino laivą
+14:16:00 - Player nuskandino laivą
+14:16:00 - Player nuskandino laivą
+14:16:00 - Player nuskandino laivą
+14:16:00 - Player nuskandino laivą
+14:16:03 - Player pataikė
+14:16:03 - Player pataikė
+14:16:04 - Player nuskandino laivą
+14:16:04 - Player nuskandino laivą
+14:16:04 - Player nuskandino laivą
+14:16:04 - Player nuskandino laivą
+14:16:05 - Player pataikė
+14:16:05 - Player pataikė
+14:16:06 - Player pataikė
+14:16:06 - Player pataikė
+14:16:06 - Player nuskandino laivą
+14:16:06 - Player nuskandino laivą
+14:16:06 - Player nuskandino laivą
+14:16:06 - Player nuskandino laivą
+14:16:06 - Player nuskandino laivą
+14:16:06 - Player nuskandino laivą
+14:16:06 - Player nuskandino laivą
+14:16:06 - Player nuskandino laivą
+14:16:06 - Player nuskandino laivą
+14:16:06 - Player nuskandino laivą
+14:16:07 - Player nuskandino laivą
+14:16:07 - Player nuskandino laivą
+14:16:07 - Player nuskandino laivą
+14:16:07 - Player nuskandino laivą
+14:16:18 - Player pataikė
+14:16:18 - Player pataikė
+14:16:20 - Player nepataikė
+14:16:20 - Player nepataikė
+14:16:26 - Player nepataikė
+14:16:26 - Player nepataikė
+14:16:28 - Player nuskandino laivą
+14:16:28 - Player nuskandino laivą
+14:16:28 - Player nuskandino laivą
+14:16:28 - Player nuskandino laivą
+14:16:28 - Player nuskandino laivą
+14:16:28 - Player nuskandino laivą
+14:16:29 - Player laimėjo žaidimą
+14:16:42 - Player pralaimėjo žaidimą

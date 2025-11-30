@@ -7,7 +7,9 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using static BattleshipServer.Game;
+using static BattleshipServer.Game; 
+using BattleshipServer.Defense;
+
 
 namespace BattleshipServer.GameFacade
 {
@@ -208,16 +210,27 @@ namespace BattleshipServer.GameFacade
             return possible_moves[idx];
         }
 
-        private async  Task<(bool, bool)> ProcessShot(int x, int y, int[,] targetBoard, Guid shooterId, Game game)
+        private async Task<(bool, bool)> ProcessShot(int x, int y, int[,] targetBoard, Guid shooterId, Game game)
         {
             bool success = true;
             bool hit = false;
+
+            var shooter = playerService.GetPlayer(shooterId, game);
+            var target = playerService.GetOpponent(shooterId, game);
+
+            var defense = game.GetDefenseForPlayer(target.Id);
+            var mode = defense?.GetMode(x, y) ?? DefenseMode.None;
+
+            if (mode == DefenseMode.Safetiness)
+            {
+                return (success: true, hit: false);
+            }
+
             if (targetBoard[y, x] == 1)
             {
                 targetBoard[y, x] = 3; // hit
                 hit = true;
 
-                // Scoreboard AddHit
                 await Scoreboard.Instance.AddHit(shooterId, game);
             }
             else if (targetBoard[y, x] == 0)
@@ -227,11 +240,16 @@ namespace BattleshipServer.GameFacade
             }
             else
             {
-                // already shot here
                 success = false;
+            }
+
+            if (mode == DefenseMode.Visibility && hit)
+            {
+                hit = false;
             }
 
             return (success, hit);
         }
+
     }
 }

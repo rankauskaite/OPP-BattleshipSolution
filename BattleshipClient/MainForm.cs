@@ -36,7 +36,7 @@ namespace BattleshipClient
         private Button btnToStart;
         private Button btnToEnd;
         private Button btnPlus, btnX, btnSuper; 
-        private Button btnShieldSafe, btnShieldInvisible;
+        private Button btnShieldSafe, btnShieldInvisible, btnAreaShield;
 
 
         // Labels:
@@ -79,7 +79,7 @@ namespace BattleshipClient
         public int doubleBombsUsed = 0;
         bool powerUpsShown = false; // rodyti +/X/Super, kai žaidimas prasidėjęs 
 
-        private bool shieldSafeActive = false, shieldInvisibleActive = false;
+        private bool shieldSafeActive = false, shieldInvisibleActive = false, areaShieldActive = false;
         private int safeShieldsUsed = 0, invisibleShieldsUsed = 0;
         private const int MaxSafeShields = 2;
         private const int MaxInvisibleShields = 2;
@@ -92,11 +92,13 @@ namespace BattleshipClient
         private MessageService MessageService;
 
         // Other:
-        public NetworkClient net { get; private set; } = new NetworkClient();
+        public INetworkClient net { get; private set; }
         public GameCommandManager CommandManager = new GameCommandManager();
 
-        public MainForm()
-        {
+        public MainForm(INetworkClient networkClient)
+        { 
+            net = networkClient;
+
             InitializeComponents();
             net.OnMessageReceived += Net_OnMessageReceived;
             ownBoard.ShipDropped += OwnBoard_ShipDropped;
@@ -156,24 +158,46 @@ namespace BattleshipClient
             this.Controls.AddRange(new Control[] { btnPlus, btnX, btnSuper }); 
 
             btnShieldSafe = new Button { Text = "Shield (Safe)", Visible = false, Enabled = false, AutoSize = true };
-            btnShieldInvisible = new Button { Text = "Shield (Invisible)", Visible = false, Enabled = false, AutoSize = true };
+            btnShieldInvisible = new Button { Text = "Shield (Invisible)", Visible = false, Enabled = false, AutoSize = true }; 
+            btnAreaShield = new Button { Text = "Area Shield 3x3", Visible = false, Enabled = false, AutoSize = true };
+
 
             btnShieldSafe.Click += (s, e) =>
             {
                 if (safeShieldsUsed >= MaxSafeShields) return;
+
                 shieldSafeActive = !shieldSafeActive;
                 shieldInvisibleActive = false;
+
                 btnShieldSafe.BackColor = shieldSafeActive ? Color.LightGreen : SystemColors.Control;
                 btnShieldInvisible.BackColor = SystemColors.Control;
+
+                SyncPowerUpsUI();
             };
 
             btnShieldInvisible.Click += (s, e) =>
             {
                 if (invisibleShieldsUsed >= MaxInvisibleShields) return;
+
                 shieldInvisibleActive = !shieldInvisibleActive;
                 shieldSafeActive = false;
+
                 btnShieldInvisible.BackColor = shieldInvisibleActive ? Color.LightGreen : SystemColors.Control;
                 btnShieldSafe.BackColor = SystemColors.Control;
+
+                SyncPowerUpsUI();
+            };
+
+            btnAreaShield.Click += (s, e) =>
+            {
+                if (!(shieldSafeActive || shieldInvisibleActive))
+                {
+                    MessageBox.Show("First choose Shield (Safe) or Shield (Invisible).");
+                    return;
+                }
+
+                areaShieldActive = !areaShieldActive;
+                btnAreaShield.BackColor = areaShieldActive ? Color.LightGreen : SystemColors.Control;
             };
 
 
@@ -242,7 +266,8 @@ namespace BattleshipClient
             topBar.Controls.Add(btnSuper);
             topBar.Controls.Add(btnDoubleBombPowerUp); 
             topBar.Controls.Add(btnShieldSafe);
-            topBar.Controls.Add(btnShieldInvisible);
+            topBar.Controls.Add(btnShieldInvisible); 
+            topBar.Controls.Add(btnAreaShield);
 
             lblScoreboardBottom = new Label
             {
@@ -479,7 +504,9 @@ namespace BattleshipClient
             btnShieldSafe.Text = "Shield (Safe)";
             btnShieldInvisible.Text = "Shield (Invisible)";
             btnShieldSafe.BackColor = SystemColors.Control;
-            btnShieldInvisible.BackColor = SystemColors.Control;
+            btnShieldInvisible.BackColor = SystemColors.Control; 
+            areaShieldActive = false;
+            btnAreaShield.BackColor = SystemColors.Control;
         }
 
         private async void BtnPlayBot_Click(object sender, EventArgs e)
@@ -548,6 +575,7 @@ namespace BattleshipClient
             btnSuper.Visible = powerUpsShown;
             btnShieldSafe.Visible = powerUpsShown;
             btnShieldInvisible.Visible = powerUpsShown;
+            btnAreaShield.Visible = powerUpsShown;
 
             btnPlus.Enabled = powerUpsShown && (plusUsed < MaxPlus);
             btnX.Enabled = powerUpsShown && (xUsed < MaxX);
@@ -555,7 +583,12 @@ namespace BattleshipClient
 
             btnShieldSafe.Enabled = powerUpsShown && (safeShieldsUsed < MaxSafeShields);
             btnShieldInvisible.Enabled = powerUpsShown && (invisibleShieldsUsed < MaxInvisibleShields);
+
+            btnAreaShield.Enabled = powerUpsShown
+                                    && (shieldSafeActive || shieldInvisibleActive)
+                                    && (safeShieldsUsed < MaxSafeShields || invisibleShieldsUsed < MaxInvisibleShields);
         }
+
 
 
 
@@ -592,6 +625,7 @@ namespace BattleshipClient
             if (!(shieldSafeActive || shieldInvisibleActive)) return;
 
             string mode = shieldSafeActive ? "safetiness" : "visibility";
+            bool isArea = areaShieldActive;   // jeigu įjungtas Area mygtukas – siųsim zoną
 
             var msg = new
             {
@@ -600,13 +634,16 @@ namespace BattleshipClient
                 {
                     x = p.X,
                     y = p.Y,
-                    mode = mode
+                    mode = mode,
+                    isArea = isArea   // NAUJAS LAUKAS
                 }
             };
 
             await net.SendAsync(msg);
 
-            // sunaudojam shield'ą
+            areaShieldActive = false;
+            btnAreaShield.BackColor = SystemColors.Control;
+
             if (shieldSafeActive)
             {
                 shieldSafeActive = false;
@@ -633,6 +670,7 @@ namespace BattleshipClient
 
             SyncPowerUpsUI();
         }
+
 
 
         public void BtnDoubleBombPowerUp_Click(object sender, EventArgs e)

@@ -8,7 +8,7 @@ using BattleshipClient.Models;
 
 namespace BattleshipClient
 {
-    public class NetworkClient
+    public class NetworkClient : INetworkClient   
     {
         private ClientWebSocket _ws;
         public event Action<MessageDto> OnMessageReceived;
@@ -24,7 +24,11 @@ namespace BattleshipClient
         {
             var json = JsonSerializer.Serialize(payload);
             var bytes = Encoding.UTF8.GetBytes(json);
-            await _ws.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+            await _ws.SendAsync(
+                new ArraySegment<byte>(bytes),
+                WebSocketMessageType.Text,
+                true,
+                CancellationToken.None);
         }
 
         private async Task ReceiveLoop()

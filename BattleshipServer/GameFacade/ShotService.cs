@@ -17,7 +17,9 @@ namespace BattleshipServer.GameFacade
     {
         private readonly PlayerService playerService;
         private readonly SendMessageService messageService;
-        public bool lastShootHit { get; private set; } = false;
+        public bool lastShootHit { get; private set; } = false; 
+        public bool lastShotWasShield { get; private set; } = false;  
+
         public bool gameOver { get; set; } = false;
 
         public ShotService(SendMessageService sendMessageService, PlayerService playerService)
@@ -221,21 +223,24 @@ namespace BattleshipServer.GameFacade
             var defense = game.GetDefenseForPlayer(target.Id);
             var mode = defense?.GetMode(x, y) ?? DefenseMode.None;
 
+            lastShotWasShield = false;
+
             if (mode == DefenseMode.Safetiness)
             {
+                lastShotWasShield = true;
                 return (success: true, hit: false);
             }
 
             if (targetBoard[y, x] == 1)
             {
-                targetBoard[y, x] = 3; // hit
+                targetBoard[y, x] = 3; 
                 hit = true;
 
                 await Scoreboard.Instance.AddHit(shooterId, game);
             }
             else if (targetBoard[y, x] == 0)
             {
-                targetBoard[y, x] = 2; // miss
+                targetBoard[y, x] = 2;
                 hit = false;
             }
             else
@@ -250,6 +255,7 @@ namespace BattleshipServer.GameFacade
 
             return (success, hit);
         }
+
 
     }
 }

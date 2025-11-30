@@ -54,7 +54,19 @@ namespace BattleshipServer.GameFacade
                 shotService.gameOver = true;
             }
             bool hit = shotService.lastShootHit;
-            await messageService.SendShotInfo(game.Player1, game.Player2, shooterId, target, x, y, hit, wholeDown);
+            bool wasShield = shotService.lastShotWasShield; 
+
+            await messageService.SendShotInfo(
+                game.Player1,
+                game.Player2,
+                shooterId,
+                target,
+                x,
+                y,
+                hit,
+                wholeDown,
+                wasShield);                                 
+
             game.InvokeShotResolved(shooterId, x, y, hit, wholeDown, sunkCells);
         }
 

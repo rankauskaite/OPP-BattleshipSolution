@@ -9,7 +9,10 @@ using BattleshipClient.Models;
 using BattleshipClient.Services;
 using BattleshipClient.Observers;
 using BattleshipClient.Factory;
-using BattleshipClient.Commands;
+using BattleshipClient.Commands; 
+using BattleshipClient.ConsoleInterpreter;
+using BattleshipClient.Views.Renderers;
+
 
 namespace BattleshipClient
 {
@@ -103,7 +106,9 @@ namespace BattleshipClient
             net.OnMessageReceived += Net_OnMessageReceived;
             ownBoard.ShipDropped += OwnBoard_ShipDropped;
             ownBoard.CellClicked += OwnBoard_CellClickedForRemoval;
-            btnGameOver.Click += BtnGameOver_Click;
+            btnGameOver.Click += BtnGameOver_Click; 
+
+            StartConsoleInterpreter();
         }
 
         private void InitializeComponents()
@@ -830,6 +835,100 @@ namespace BattleshipClient
                 enemyBoard.SetStyle(selectedStyle);
                 lblStatus.Text = $"Lentos tema pakeista į: {selectedStyle}";
             }
+        } 
+
+        /// <summary>
+        /// Kvietimas iš Interpreter sluoksnio: paleidžia šūvį į priešą
+        /// pagal lentos koordinates (0..Size-1).
+        /// </summary>
+        public void FireShotFromConsole(int boardX, int boardY, bool usePlus, bool useXShape, bool useSuper)
+        {
+            if (this.InvokeRequired)
+            {
+                this.BeginInvoke(new Action(() => FireShotFromConsole(boardX, boardY, usePlus, useXShape, useSuper)));
+                return;
+            }
+
+            if (enemyBoard == null)
+            {
+                Console.WriteLine("Priešo lenta dar nesukurta.");
+                return;
+            }
+
+            if (boardX < 0 || boardY < 0 || boardX >= enemyBoard.Size || boardY >= enemyBoard.Size)
+            {
+                Console.WriteLine("Koordinatė už lentos ribų.");
+                return;
+            }
+
+            if (usePlus && plusUsed >= MaxPlus)
+            {
+                Console.WriteLine("+ Shot jau panaudotas maksimaliai.");
+                usePlus = false;
+            }
+
+            if (useXShape && xUsed >= MaxX)
+            {
+                Console.WriteLine("X Shot jau panaudotas maksimaliai.");
+                useXShape = false;
+            }
+
+            if (useSuper && superUsed >= MaxSuper)
+            {
+                Console.WriteLine("Super Shot jau panaudotas maksimaliai.");
+                useSuper = false;
+            }
+
+            plusActive = usePlus;
+            xActive = useXShape;
+            superActive = useSuper;
+
+            var p = new Point(boardX, boardY);
+            EnemyBoard_CellClicked(enemyBoard, p);
         }
+
+        /// <summary>
+        /// Paleidžia atskirą giją, kuri klauso vartotojo įvesčių iš konsolės
+        /// ir perduoda jas CommandInterpreter.
+        /// </summary>
+        private void StartConsoleInterpreter()
+        {
+            Task.Run(() =>
+            {
+                var _ = new SystemConsoleIO();
+
+                Console.WriteLine("=== Battleship konsolės komandos ===");
+                Console.WriteLine("shoot B5   - paprastas šūvis");
+                Console.WriteLine("plus C7    - + formos power-up šūvis");
+                Console.WriteLine("x D4       - X formos power-up šūvis");
+                Console.WriteLine("super A1   - super šūvis");
+                Console.WriteLine("undo       - atšaukti paskutinį veiksmą (jei įmanoma)");
+                Console.WriteLine("redo       - pakartoti atšauktą veiksmą");
+                Console.WriteLine("help / ?   - pagalbos tekstas");
+                Console.WriteLine("exit       - išeiti iš konsolės režimo");
+                Console.WriteLine();
+
+                var interpreter = new CommandInterpreter();
+
+                while (true)
+                {
+                    Console.Write("> ");
+                    var line = Console.ReadLine();
+                    if (line is null)
+                        break;
+
+                    if (string.IsNullOrWhiteSpace(line))
+                        continue;
+
+                    if (line.Equals("exit", StringComparison.OrdinalIgnoreCase))
+                        break;
+
+                    interpreter.Interpret(line, this);
+                }
+
+                Console.WriteLine("Konsolės režimas baigtas.");
+            });
+        }
+
     }
-}
+}  

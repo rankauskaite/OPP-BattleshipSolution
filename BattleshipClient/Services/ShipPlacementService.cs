@@ -1,4 +1,5 @@
 ﻿using BattleshipClient.Models;
+using BattleshipClient.TemplateMethod;
 
 namespace BattleshipClient.Services
 {
@@ -8,44 +9,26 @@ namespace BattleshipClient.Services
         {
         }
 
-        public (List<ShipDto> ships, CellState[,] map) RandomizeShips(int size, List<int> shipLengths)
+        //// NAUJAS IMPLEMENTAVIMAS – naudoja Template Method
+        //public (List<ShipDto> ships, CellState[,] map) RandomizeShips(int size, List<int> shipLengths)
+        //{
+        //    // čia pasirenkame konkrečią strategiją (RandomShipPlacement).
+        //    // Jei tiks – vėliau galėsim padaryti, kad vartotojas galėtų pasirinkti EdgeShipPlacement.
+        //    var strategy = new RandomShipPlacement();
+        //    return strategy.PlaceShips(size, shipLengths);
+        //}
+
+        public (List<ShipDto> ships, CellState[,] map) RandomizeShips(int size, List<int> shipLengths, PlacementMode mode)
         {
-            var rnd = new Random();
-            List<ShipDto> ships = new List<ShipDto>();
-            var temp = new CellState[size, size];
-
-            foreach (var len in shipLengths)
+            ShipPlacementTemplate strategy = mode switch
             {
-                bool placed = false;
-                int tries = 0;
-                while (!placed && tries < 200)
-                {
-                    tries++;
-                    bool horiz = rnd.Next(2) == 0;
-                    int x = rnd.Next(0, size - (horiz ? len - 1 : 0));
-                    int y = rnd.Next(0, size - (horiz ? 0 : len - 1));
-                    bool ok = true;
-                    for (int i = 0; i < len; i++)
-                    {
-                        int cx = x + (horiz ? i : 0);
-                        int cy = y + (horiz ? 0 : i);
-                        if (temp[cy, cx] != CellState.Empty) { ok = false; break; }
-                    }
-                    if (ok)
-                    {
-                        for (int i = 0; i < len; i++)
-                        {
-                            int cx = x + (horiz ? i : 0);
-                            int cy = y + (horiz ? 0 : i);
-                            temp[cy, cx] = CellState.Ship;
-                        }
-                        ships.Add(new ShipDto { x = x, y = y, len = len, dir = horiz ? "H" : "V" });
-                        placed = true;
-                    }
-                }
-            }
+                PlacementMode.Random => new RandomShipPlacement(),
+                PlacementMode.Edge => new EdgeShipPlacement(),
+                PlacementMode.SpreadSafe => new SpreadSafeShipPlacement(),
+                _ => new RandomShipPlacement()
+            };
 
-            return (ships, temp);
+            return strategy.PlaceShips(size, shipLengths);
         }
 
         public static bool CanPlaceShip(GameBoard board, int x, int y, int len, bool horiz)

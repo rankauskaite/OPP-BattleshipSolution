@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using BattleshipClient.Models;
 
-namespace BattleshipClient.Services
+namespace BattleshipClient.TemplateMethod
 {
     public enum PlacementMode
     {

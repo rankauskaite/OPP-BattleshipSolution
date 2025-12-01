@@ -1,4 +1,5 @@
 ﻿using BattleshipClient.Models;
+using BattleshipClient.TemplateMethod;
 
 namespace BattleshipClient.Services
 {

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using BattleshipClient.Models;
 
-namespace BattleshipClient.Services
+namespace BattleshipClient.TemplateMethod
 {
     /// <summary>
     /// Atsitiktinė laivų išdėstymo strategija.

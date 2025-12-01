@@ -11,6 +11,7 @@ using BattleshipClient.Observers;
 using BattleshipClient.Factory;
 using BattleshipClient.Commands; 
 using BattleshipClient.ConsoleInterpreter;
+using BattleshipClient.TemplateMethod;
 using BattleshipClient.Views.Renderers;
 
 
@@ -24,7 +25,6 @@ namespace BattleshipClient
 
         // Buttons:
         private Button btnConnect;
-        private Button btnRandomize;
         public Button btnReady;
         private Button btnPlaceShips;
         public Button btnGameOver;
@@ -52,6 +52,7 @@ namespace BattleshipClient
         public FlowLayoutPanel shipPanel;
         private FlowLayoutPanel topBar;
         private ComboBox cmbBoardStyle;
+        private ComboBox cmbPlacementMode;
 
         // Objects related to game:
         public GameBoard ownBoard { get; set; }
@@ -97,6 +98,9 @@ namespace BattleshipClient
         // Other:
         public INetworkClient net { get; private set; }
         public GameCommandManager CommandManager = new GameCommandManager();
+        private PlacementMode placementMode = PlacementMode.Random;
+        private ContextMenuStrip randomizeMenu;
+        private bool userChosePlacementMode = false;
 
         public MainForm(INetworkClient networkClient)
         { 
@@ -114,7 +118,7 @@ namespace BattleshipClient
         private void InitializeComponents()
         {
             this.Text = "Battleship Client";
-            this.ClientSize = new Size(1200, 700);
+            this.ClientSize = new Size(1200, 800);
             this.BackColor = ColorTranslator.FromHtml("#f8f9fa");
 
             Label l1 = new Label { Text = "Server (ws):", Location = new Point(10, 10), AutoSize = true };
@@ -125,17 +129,15 @@ namespace BattleshipClient
             btnConnect = new Button { Text = "Connect", Location = new Point(600, 8), Width = 80, Height = 30 };
             btnConnect.Click += BtnConnect_Click;
 
-            btnRandomize = new Button { Text = "Randomize ships", Location = new Point(700, 8), Width = 130, Height = 30 };
-            btnRandomize.Click += BtnRandomize_Click;
-
             btnPlaceShips = new Button { Text = "Place ships", Location = new Point(560, 44), Width = 130, Height = 30 };
             btnPlaceShips.Click += BtnPlaceShips_Click;
 
-            btnReady = new Button { Text = "Ready", Location = new Point(700, 44), Width = 130, Height = 30 };
+            btnReady = new Button { Text = "Ready", Location = new Point(700, 8), Width = 130, Height = 30 };
             btnReady.Click += BtnReady_Click;
 
-            var btnPlayBot = new Button { Text = "Play vs Bot", Location = new Point(400, 88), Width = 130, Height = 30 };
+            var btnPlayBot = new Button { Text = "Play vs Bot", Location = new Point(560, 80), Width = 130, Height = 30 };
             btnPlayBot.Click += BtnPlayBot_Click;
+            this.Controls.Add(btnPlayBot);
 
             radioMiniGame = new RadioButton { Text = "Mini Game", Location = new Point(840, 8), AutoSize = true };
             radioStandartGame = new RadioButton { Text = "Standard Game", Location = new Point(950, 8), Checked = true };
@@ -146,13 +148,12 @@ namespace BattleshipClient
             btnSaveShipPlacement = new Button { Text = "Save ship placement", Location = new Point(840, 44), AutoSize = true, Visible = false, Enabled = false };
             btnSaveShipPlacement.Click += BtnSaveGameShipPlacement_Click;
 
-            btnUseGameCopy = new Button { Text = "Use saved placement", Location = new Point(840, 44), AutoSize = true, Visible = true };
+            btnUseGameCopy = new Button { Text = "Use saved placement", Location = new Point(860, 44), AutoSize = true, Visible = true };
             btnUseGameCopy.Click += BtnUseGameCopy_Click;
 
             btnGameOver = new Button { Text = "Game Over", Location = new Point(400, 44), Width = 100, Height = 30, Visible = false };
 
-
-            btnPlus = new Button { Text = "+ Shot", Visible = false, Enabled = false, AutoSize = true };
+            btnPlus = new Button { Text = "+ Shot", Location = new Point(560, 100), Visible = false, Enabled = false, AutoSize = true };
             btnX = new Button { Text = "X Shot", Visible = false, Enabled = false, AutoSize = true };
             btnSuper = new Button { Text = "Super", Visible = false, Enabled = false, AutoSize = true };
 
@@ -165,7 +166,6 @@ namespace BattleshipClient
             btnShieldSafe = new Button { Text = "Shield (Safe)", Visible = false, Enabled = false, AutoSize = true };
             btnShieldInvisible = new Button { Text = "Shield (Invisible)", Visible = false, Enabled = false, AutoSize = true }; 
             btnAreaShield = new Button { Text = "Area Shield 3x3", Visible = false, Enabled = false, AutoSize = true };
-
 
             btnShieldSafe.Click += (s, e) =>
             {
@@ -209,15 +209,15 @@ namespace BattleshipClient
             lblStatus = new Label { Text = "Not connected", Location = new Point(10, 40), AutoSize = true };
             lblPowerUpInfo = new Label { Location = new Point(10, 60), AutoSize = true, Visible = false };
 
-            ownBoard = new GameBoard { Location = new Point(80, 150) };
-            enemyBoard = new GameBoard { Location = new Point(550, 150) };
+            ownBoard = new GameBoard { Location = new Point(80, 200) };
+            enemyBoard = new GameBoard { Location = new Point(550, 200) };
             enemyBoard.CellClicked += EnemyBoard_CellClicked;
 
             this.gameTemplate = new GameTemplate(10);
 
             shipPanel = new FlowLayoutPanel
             {
-                Location = new Point(100, 530),
+                Location = new Point(100, 600),
                 Size = new Size(450, 100),
                 AutoScroll = true,
                 BorderStyle = BorderStyle.FixedSingle,
@@ -227,11 +227,47 @@ namespace BattleshipClient
             this.Controls.Add(shipPanel);
             this.Controls.AddRange(new Control[] {
                 l1, txtServer, l2, txtName,
-                btnConnect, btnRandomize, btnPlaceShips, radioMiniGame, radioStandartGame, btnReady, btnSaveShipPlacement, btnUseGameCopy, btnDoubleBombPowerUp, btnGameOver,
+                btnConnect, btnPlaceShips, radioMiniGame, radioStandartGame, btnReady, btnSaveShipPlacement, btnUseGameCopy, btnDoubleBombPowerUp, btnGameOver,
                 lblStatus, lblPowerUpInfo, ownBoard, enemyBoard
             });
 
-            // --- Lentos temos pasirinkimas ---
+            // --- Laivų išdėstymo strategijos pasirinkimas ---
+            Label lblPlacementMode = new Label
+            {
+                Text = "Placement Mode:",
+                Location = new Point(700, 44),
+                AutoSize = true
+            };
+
+            cmbPlacementMode = new ComboBox
+            {
+                Location = new Point(700, 64),
+                Width = 150,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+
+            cmbPlacementMode.Items.Add("Random");
+            cmbPlacementMode.Items.Add("Edge");
+            cmbPlacementMode.Items.Add("Spread Safe");
+
+            cmbPlacementMode.SelectedIndex = 0;
+
+            cmbPlacementMode.SelectedIndexChanged += (s, e) =>
+            {
+                userChosePlacementMode = true;
+                var mode = cmbPlacementMode.SelectedIndex switch
+                {
+                    0 => PlacementMode.Random,
+                    1 => PlacementMode.Edge,
+                    2 => PlacementMode.SpreadSafe,
+                    _ => PlacementMode.Random
+                };
+
+                SetPlacementMode(mode);
+            };
+            this.Controls.Add(lblPlacementMode);
+            this.Controls.Add(cmbPlacementMode);
+
             lblBoardStyle = new Label
             {
                 Text = "Board Style:",
@@ -246,12 +282,10 @@ namespace BattleshipClient
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
 
-            // Užpildom visus stilius
             cmbBoardStyle.Items.AddRange(Enum.GetNames(typeof(BoardStyle)));
-            cmbBoardStyle.SelectedIndex = 0; // Classic pagal nutylėjimą
+            cmbBoardStyle.SelectedIndex = 0;
             cmbBoardStyle.SelectedIndexChanged += CmbBoardStyle_SelectedIndexChanged;
 
-            // Pridedam į formą
             this.Controls.Add(lblBoardStyle);
             this.Controls.Add(cmbBoardStyle);
 
@@ -260,12 +294,11 @@ namespace BattleshipClient
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                Padding = new Padding(600, 80, 90, 20),
+                Padding = new Padding(555, 115, 90, 20),
                 WrapContents = false
             };
             this.Controls.Add(topBar);
 
-            topBar.Controls.Add(btnPlayBot);
             topBar.Controls.Add(btnPlus);
             topBar.Controls.Add(btnX);
             topBar.Controls.Add(btnSuper);
@@ -291,11 +324,11 @@ namespace BattleshipClient
             btnReady.Enabled = false;
             soundService.PlayMusic(MusicType.Background);
 
-            btnReplay = new Button { Text = "Replay", Location = new Point(480, 550), Width = 80, Height = 30, Visible = false };
-            btnToStart = new Button { Text = "⏮ Start", Location = new Point(600, 550), Width = 80, Height = 30, Visible = false };
-            btnPrev = new Button { Text = "◀ Prev", Location = new Point(700, 550), Width = 80, Height = 30, Visible = false };
-            btnNext = new Button { Text = "Next ▶", Location = new Point(800, 550), Width = 80, Height = 30, Visible = false };
-            btnToEnd = new Button { Text = "End ⏭", Location = new Point(900, 550), Width = 80, Height = 30, Visible = false };
+            btnReplay = new Button { Text = "Replay", Location = new Point(480, 620), Width = 80, Height = 30, Visible = false };
+            btnToStart = new Button { Text = "⏮ Start", Location = new Point(600, 620), Width = 80, Height = 30, Visible = false };
+            btnPrev = new Button { Text = "◀ Prev", Location = new Point(700, 620), Width = 80, Height = 30, Visible = false };
+            btnNext = new Button { Text = "Next ▶", Location = new Point(800, 620), Width = 80, Height = 30, Visible = false };
+            btnToEnd = new Button { Text = "End ⏭", Location = new Point(900, 620), Width = 80, Height = 30, Visible = false };
 
             btnToStart.Click += BtnToStart_Click;
             btnToEnd.Click += BtnToEnd_Click;
@@ -440,7 +473,7 @@ namespace BattleshipClient
         {
             this.ReloadBoard();
             myShips.Clear();
-            (myShips, CellState[,] temp) = ShipPlacementService.RandomizeShips(this.gameTemplate.GameBoard.Size, this.gameTemplate.Ships);
+            (myShips, CellState[,] temp) = ShipPlacementService.RandomizeShips(this.gameTemplate.GameBoard.Size, this.gameTemplate.Ships, placementMode);
             ownBoard.Ships = myShips;
             ownBoard.Invalidate();
             btnReady.Enabled = myShips.Count == this.gameTemplate.Ships.Count;
@@ -449,7 +482,7 @@ namespace BattleshipClient
                 for (int c = 0; c < ownBoard.Size; c++)
                     ownBoard.SetCell(c, r, temp[r, c]);
 
-            lblStatus.Text = $"Randomized {myShips.Count} ships.";
+            //lblStatus.Text = $"Randomized {myShips.Count} ships.";
         }
 
         private async void BtnReady_Click(object sender, EventArgs e)
@@ -476,8 +509,8 @@ namespace BattleshipClient
             await net.SendAsync(msg);
             lblStatus.Text = "Ready sent.";
             btnReady.Enabled = false;
+            cmbPlacementMode.Enabled = false;
             btnPlaceShips.Enabled = false;
-            btnRandomize.Enabled = false;
             radioMiniGame.Enabled = false;
             radioStandartGame.Enabled = false;
             lblPowerUpInfo.Visible = true;
@@ -516,10 +549,15 @@ namespace BattleshipClient
 
         private async void BtnPlayBot_Click(object sender, EventArgs e)
         {
+            if (userChosePlacementMode == false)
+            {
+                placementMode = PlacementMode.Random;
+                SetPlacementMode( placementMode );
+            }
             if (myShips.Count != this.gameTemplate.Ships.Count)
             {
                 myShips.Clear();
-                (myShips, CellState[,] temp) = ShipPlacementService.RandomizeShips(this.gameTemplate.GameBoard.Size, this.gameTemplate.Ships);
+                (myShips, CellState[,] temp) = ShipPlacementService.RandomizeShips(this.gameTemplate.GameBoard.Size, this.gameTemplate.Ships, placementMode);
                 ownBoard.Ships = myShips;
                 ownBoard.Invalidate();
                 for (int r = 0; r < ownBoard.Size; r++)
@@ -532,8 +570,8 @@ namespace BattleshipClient
 
             lblStatus.Text = "Play vs Bot: laukiam starto...";
             btnReady.Enabled = false;
+            cmbPlacementMode.Enabled = false;
             btnPlaceShips.Enabled = false;
-            btnRandomize.Enabled = false;
             radioMiniGame.Enabled = false;
             radioStandartGame.Enabled = false;
             lblPowerUpInfo.Visible = true;
@@ -605,8 +643,8 @@ namespace BattleshipClient
                 this.GameService.ResetForm(this, false);
                 soundService.PlayMusic(MusicType.Background);
                 this.btnPlaceShips.Enabled = true;
-                this.btnRandomize.Enabled = true;
                 this.btnReady.Enabled = true;
+                this.cmbPlacementMode.Enabled = true;
                 this.btnUseGameCopy.Enabled = true;
                 this.btnUseGameCopy.Visible = true;
                 this.btnSaveShipPlacement.Visible = false;
@@ -732,12 +770,12 @@ namespace BattleshipClient
             this.gameTemplate = this.abstractFactory.CreateGame();
 
             this.ownBoard = this.gameTemplate.GameBoard;
-            this.ownBoard.Location = new Point(80, 130);
+            this.ownBoard.Location = new Point(80, 200);
             this.ownBoard.ShipDropped += OwnBoard_ShipDropped;
             this.ownBoard.CellClicked += OwnBoard_CellClickedForRemoval;
 
             this.enemyBoard = this.gameTemplate.EnemyBoard;
-            this.enemyBoard.Location = new Point(550, 130);
+            this.enemyBoard.Location = new Point(550, 200);
             this.enemyBoard.CellClicked += EnemyBoard_CellClicked;
 
             this.Controls.Add(ownBoard);
@@ -930,5 +968,22 @@ namespace BattleshipClient
             });
         }
 
+        private void SetPlacementMode(PlacementMode mode)
+        {
+            placementMode = mode;
+
+            lblStatus.Text = mode switch
+            {
+                PlacementMode.Random =>
+                    "Placement: Random — laivai dedami bet kurioje lentos vietoje.",
+                PlacementMode.Edge =>
+                    "Placement: Edge — laivai išdėstomi tik palei kraštus (viršų, dešinę, apačią, kairę).",
+                PlacementMode.SpreadSafe =>
+                    "Placement: Spread Safe — laivai nededami greta vienas kito, tarp jų visada tarpas.",
+                _ => "Placement: Random"
+            };
+
+            BtnRandomize_Click(this, EventArgs.Empty);
+        }
     }
 }  

@@ -73,44 +73,51 @@ namespace BattleshipClient.Services
                     break;
 
                 case "shotResult":
+                {
+                    int x = dto.Payload.GetProperty("x").GetInt32();
+                    int y = dto.Payload.GetProperty("y").GetInt32();
+                    string res = dto.Payload.GetProperty("result").GetString();
+                    string shooter = dto.Payload.GetProperty("shooterId").GetString();
+
+                    bool isMyShot = shooter == form.myId;
+                    string shooterName = isMyShot ? form.myName : form.oppName;
+
+                    var board = isMyShot ? form.enemyBoard : form.ownBoard;
+                    var prevState = board.GetCell(x, y);
+
+                    // VISIEMS vienodai – jei serveris sako "shield", dažom Shielded
+                    CellState newState = res switch
                     {
-                        int x = dto.Payload.GetProperty("x").GetInt32();
-                        int y = dto.Payload.GetProperty("y").GetInt32();
-                        string res = dto.Payload.GetProperty("result").GetString();
-                        string shooter = dto.Payload.GetProperty("shooterId").GetString();
+                        "hit" => CellState.Hit,
+                        "whole_ship_down" => CellState.Whole_ship_down,
+                        "shield" => CellState.Shielded,
+                        _ => CellState.Miss
+                    };
 
-                        bool isMyShot = shooter == form.myId;
-                        string shooterName = isMyShot ? form.myName : form.oppName;
+                    var cmd = new BattleshipClient.Commands.ShotCommand(
+                        board, x, y, prevState, newState, shooterName);
+                    form.CommandManager.ExecuteCommand(cmd);
 
-                        CellState newState = res switch
-                        {
-                            "hit" => CellState.Hit,
-                            "whole_ship_down" => CellState.Whole_ship_down,
-                            _ => CellState.Miss
-                        };
+                    form.lblStatus.Text = $"Shot result: {res} at {x},{y}";
 
-                        var board = isMyShot ? form.enemyBoard : form.ownBoard;
-                        var prevState = board.GetCell(x, y);
-
-                        var cmd = new BattleshipClient.Commands.ShotCommand(board, x, y, prevState, newState, shooterName);
-                        form.CommandManager.ExecuteCommand(cmd);
-
-                        form.lblStatus.Text = $"Shot result: {res} at {x},{y}";
-
-                        switch (res)
-                        {
-                            case "hit":
-                                _eventManager.Notify("HIT", shooterName);
-                                break;
-                            case "whole_ship_down":
-                                _eventManager.Notify("EXPLOSION", shooterName);
-                                break;
-                            default:
-                                _eventManager.Notify("MISS", shooterName);
-                                break;
-                        }
-                        break;
+                    switch (res)
+                    {
+                        case "hit":
+                            _eventManager.Notify("HIT", shooterName);
+                            break;
+                        case "whole_ship_down":
+                            _eventManager.Notify("EXPLOSION", shooterName);
+                            break;
+                        case "shield":
+                            _eventManager.Notify("MISS", shooterName); // garsas tas pats kaip miss
+                            break;
+                        default:
+                            _eventManager.Notify("MISS", shooterName);
+                            break;
                     }
+                break;
+                }
+
 
                 case "gameOver":
                     if (dto.Payload.TryGetProperty("winnerId", out var w))

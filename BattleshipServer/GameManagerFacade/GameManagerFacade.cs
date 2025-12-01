@@ -6,7 +6,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
+using System.Threading.Tasks; 
+using BattleshipServer.Defense;
+
 
 namespace BattleshipServer.GameManagerFacade
 {
@@ -47,6 +49,9 @@ namespace BattleshipServer.GameManagerFacade
                 Console.WriteLine($"[Manager] Player {player.Name} placed {ships.Count} ships.");
                 if (game.IsReady && game.GameModesMatch)
                 {
+                    // ČIA įjungiame random gynybą su Area + Cell shields
+                    //DefenseSetup.SetupRandomDefense(game);
+
                     await game.StartGame();
                 }
                 else if (!game.GameModesMatch)
@@ -116,7 +121,88 @@ namespace BattleshipServer.GameManagerFacade
                     await botGame.bot.MaybePlayAsync();
                 }
             }
+        } 
+
+        public async Task HandlePlaceShield(GameManager manager, PlayerConnection player, MessageDto dto)
+        {
+            if (dto.Payload.ValueKind != JsonValueKind.Object)
+                return;
+
+            if (!dto.Payload.TryGetProperty("x", out var xe) ||
+                !dto.Payload.TryGetProperty("y", out var ye))
+                return;
+
+            int x = xe.GetInt32();
+            int y = ye.GetInt32();
+
+            string modeStr = "safetiness";
+            if (dto.Payload.TryGetProperty("mode", out var me) && me.ValueKind == JsonValueKind.String)
+            {
+                modeStr = me.GetString() ?? "safetiness";
+            }
+
+            bool isArea = false;
+            if (dto.Payload.TryGetProperty("isArea", out var ae) &&
+                (ae.ValueKind == JsonValueKind.True || ae.ValueKind == JsonValueKind.False))
+            {
+                isArea = ae.GetBoolean();
+            }
+
+            // PVP žaidimas, kuriame žaidžia šis player'io Id
+            Game? game = manager.GetPlayersGame(player.Id);
+            if (game == null)
+                return;
+
+            // Jei tai NPC žaidimas – ignoruojam
+            var botGame = manager.GetBotGame(player.Id);
+            if (botGame.bot != null)
+                return;
+
+            DefenseMode mode = modeStr == "visibility"
+                ? DefenseMode.Visibility
+                : DefenseMode.Safetiness;
+
+            if (isArea)
+            {
+                // 3x3 zona aplink pasirinktą langelį (su ribomis 0..9)
+                int x1 = Math.Max(0, x - 1);
+                int y1 = Math.Max(0, y - 1);
+                int x2 = Math.Min(9, x + 1);
+                int y2 = Math.Min(9, y + 1);
+
+                if (mode == DefenseMode.Safetiness)
+                {
+                    // SAFE area – kiekvienam langeliui sukuriam atskirą CellShield
+                    for (int yy = y1; yy <= y2; yy++)
+                    {
+                        for (int xx = x1; xx <= x2; xx++)
+                        {
+                            game.AddCellShield(player.Id, xx, yy, mode);
+                        }
+                    }
+                }
+                else
+                {
+                    // VISIBILITY area – tikras AreaShield, galioja visai zonai
+                    game.AddAreaShield(player.Id, x1, y1, x2, y2, mode);
+                }
+            }
+            else
+            {
+                // Vieno langelio skydas (kaip buvo anksčiau)
+                game.AddCellShield(player.Id, x, y, mode);
+            }
+
+
+            var payload = JsonSerializer.SerializeToElement(new
+            {
+                message = isArea
+                    ? $"Placed {mode} AREA shield around {x},{y}"
+                    : $"Placed {mode} shield at {x},{y}"
+            });
+            await player.SendAsync(new MessageDto { Type = "info", Payload = payload });
         }
+
 
         public void HandlePlayBot(GameManager manager, PlayerConnection player, MessageDto dto, Database db)
         {

@@ -11,7 +11,16 @@ namespace BattleshipClient
             Application.SetHighDpiMode(HighDpiMode.SystemAware);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new MainForm());
+
+            Func<INetworkClient> factory = () => new NetworkClient();
+
+            bool useProxy = false; 
+
+            INetworkClient client = useProxy
+                ? new NetworkClientProxy(factory, "localhost")
+                : factory();
+
+            Application.Run(new MainForm(client));
         }
     }
 }

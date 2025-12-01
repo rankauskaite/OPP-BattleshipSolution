@@ -7,7 +7,9 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using static BattleshipServer.Game;
+using static BattleshipServer.Game; 
+using BattleshipServer.Defense;
+
 
 namespace BattleshipServer.GameFacade
 {
@@ -15,7 +17,9 @@ namespace BattleshipServer.GameFacade
     {
         private readonly PlayerService playerService;
         private readonly SendMessageService messageService;
-        public bool lastShootHit { get; private set; } = false;
+        public bool lastShootHit { get; private set; } = false; 
+        public bool lastShotWasShield { get; private set; } = false;  
+
         public bool gameOver { get; set; } = false;
 
         public ShotService(SendMessageService sendMessageService, PlayerService playerService)
@@ -208,30 +212,50 @@ namespace BattleshipServer.GameFacade
             return possible_moves[idx];
         }
 
-        private async  Task<(bool, bool)> ProcessShot(int x, int y, int[,] targetBoard, Guid shooterId, Game game)
+        private async Task<(bool, bool)> ProcessShot(int x, int y, int[,] targetBoard, Guid shooterId, Game game)
         {
             bool success = true;
             bool hit = false;
+
+            var shooter = playerService.GetPlayer(shooterId, game);
+            var target = playerService.GetOpponent(shooterId, game);
+
+            var defense = game.GetDefenseForPlayer(target.Id);
+            var mode = defense?.GetMode(x, y) ?? DefenseMode.None;
+
+            lastShotWasShield = false;
+
+            if (mode == DefenseMode.Safetiness)
+            {
+                lastShotWasShield = true;
+                return (success: true, hit: false);
+            }
+
             if (targetBoard[y, x] == 1)
             {
-                targetBoard[y, x] = 3; // hit
+                targetBoard[y, x] = 3; 
                 hit = true;
 
-                // Scoreboard AddHit
                 await Scoreboard.Instance.AddHit(shooterId, game);
             }
             else if (targetBoard[y, x] == 0)
             {
-                targetBoard[y, x] = 2; // miss
+                targetBoard[y, x] = 2;
                 hit = false;
             }
             else
             {
-                // already shot here
                 success = false;
+            }
+
+            if (mode == DefenseMode.Visibility && hit)
+            {
+                hit = false;
             }
 
             return (success, hit);
         }
+
+
     }
 }

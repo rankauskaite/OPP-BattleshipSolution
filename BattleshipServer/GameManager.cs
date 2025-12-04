@@ -10,6 +10,7 @@ using BattleshipServer.Npc;
 using System.Net.WebSockets; 
 using BattleshipServer.Builders;
 using BattleshipServer.Domain;
+using BattleshipServer.Visitor;
 
 
 namespace BattleshipServer
@@ -23,7 +24,7 @@ namespace BattleshipServer
         private readonly ConcurrentDictionary<Guid, (Game game, IBotPlayerController bot)> _botGames = new();
         private readonly Dictionary<Guid, Game> copiedGames = new();
         private readonly GameManagerFacade.GameManagerFacade gameManagerFacade = new GameManagerFacade.GameManagerFacade();
-
+        
         public void AddToWaitingQueue(PlayerConnection player)
         {
             _waiting.Enqueue(player);
@@ -61,38 +62,27 @@ namespace BattleshipServer
 
         public async Task HandleMessageAsync(PlayerConnection player, MessageDto dto)
         {
-            switch (dto.Type)
-            {
-                case "register":
-                    await gameManagerFacade.RegisterPlayerAsync(this, player, dto);
-                    TryPairPlayers();
-                    break;
-
-                case "ready":
-                    await gameManagerFacade.MarkPlayerAsReady(this, player, dto);
-                    break;
-                case "copyGame":
-                    await gameManagerFacade.CopyGame(this, player);
-                    break;
-                case "useGameCopy":
-                    await gameManagerFacade.UseGameCopy(this, player);
-                    break;
-                case "shot":
-                    await gameManagerFacade.HandleShot(this, player, dto);
-                    break;
-                case "playBot":
-                    gameManagerFacade.HandlePlayBot(this, player, dto, _db);
-                    break; 
-                case "placeShield":
-                    await gameManagerFacade.HandlePlaceShield(this, player, dto);
-                    break;
-                default:
-                    Console.WriteLine($"[Manager] Unknown message type: {dto.Type}");
-                    break;
-            }
+            GameMessage message = CreateGameMessage(dto);
+            IGameMessageVisitor messageHandlerVisitor = new GameMessageHandlerVisitor(this, _db);
+            await message.AcceptAsync(messageHandlerVisitor, player);
         }
 
-        private async void TryPairPlayers()
+        private GameMessage CreateGameMessage(MessageDto dto)
+        {
+            return dto.Type switch
+            {
+                "register" => new RegisterGameMessage(dto),
+                "ready" => new ReadyMessage(dto),
+                "copyGame" => new CopyGameMessage(dto),
+                "useGameCopy" => new UseGameCopyMessage(dto),
+                "shot" => new ShotMessage(dto),
+                "playBot" => new PlayBotMessage(dto),
+                "placeShield" => new PlaceShieldMessage(dto),
+                _ => throw new ArgumentException($"Unknown message type: {dto.Type}"),
+            };
+        }
+
+        public async void TryPairPlayers()
         {
             if (_waiting.Count >= 2)
             {
@@ -139,49 +129,5 @@ namespace BattleshipServer
             }
             return null;
         }
-
-
-        // private static List<ShipDto> RandomFleet(bool standart)
-        // {
-        //     var lens = standart ? new[] {4, 3, 3, 2, 2, 2, 1, 1, 1, 1} : new[] {3, 2, 2, 2, 1};
-        //     var rnd = new Random();
-        //     var used = new int[10,10];
-        //     var list = new List<ShipDto>();
-
-        //     foreach (var L in lens)
-        //     {
-        //         bool placed = false;
-        //         for (int tries=0; tries<500 && !placed; tries++)
-        //         {
-        //             bool horiz = rnd.Next(2)==0;
-        //             int x = rnd.Next(0, 10 - (horiz ? L : 0));
-        //             int y = rnd.Next(0, 10 - (horiz ? 0 : L));
-        //             if (CanPlace(used, x, y, L, horiz))
-        //             {
-        //                 for (int i=0;i<L;i++)
-        //                 {
-        //                     int cx = x + (horiz? i:0);
-        //                     int cy = y + (horiz? 0:i);
-        //                     used[cy, cx] = 1;
-        //                 }
-        //                 list.Add(new ShipDto { X=x, Y=y, Len=L, Dir=horiz?"H":"V" });
-        //                 placed = true;
-        //             }
-        //         }
-        //     }
-        //     return list;
-
-        //     static bool CanPlace(int[,] b, int x, int y, int len, bool h)
-        //     {
-        //         for (int i=0;i<len;i++)
-        //         {
-        //             int cx = x + (h? i:0);
-        //             int cy = y + (h? 0:i);
-        //             if (cx<0||cx>=10||cy<0||cy>=10) return false;
-        //             if (b[cy,cx]!=0) return false;
-        //         }
-        //         return true;
-        //     }
-        // }
     }
 }

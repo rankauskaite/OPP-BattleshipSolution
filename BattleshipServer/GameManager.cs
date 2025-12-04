@@ -63,7 +63,10 @@ namespace BattleshipServer
         public async Task HandleMessageAsync(PlayerConnection player, MessageDto dto)
         {
             GameMessage message = CreateGameMessage(dto);
+            IGameMessageVisitor validatorVisitor = new GameMessageValidatorVisitor();
             IGameMessageVisitor messageHandlerVisitor = new GameMessageHandlerVisitor(this, _db);
+
+            await message.AcceptAsync(validatorVisitor, player);
             await message.AcceptAsync(messageHandlerVisitor, player);
         }
 

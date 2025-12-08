@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks; 
 using BattleshipServer.Defense;
+using BattleshipServer.ChainOfResponsibility;
 
 
 namespace BattleshipServer.GameManagerFacade
@@ -94,32 +95,16 @@ namespace BattleshipServer.GameManagerFacade
 
         public async Task HandleShot(GameManager manager, PlayerConnection player, MessageDto dto)
         {
-            if (dto.Payload.TryGetProperty("x", out var xe) && dto.Payload.TryGetProperty("y", out var ye))
+            List<ShotHandler> shotHandlers = new List<ShotHandler>()
             {
-                int x = xe.GetInt32();
-                int y = ye.GetInt32();
-                Game? game = manager.GetPlayersGame(player.Id);
-                if (game != null)
-                {
-                    Dictionary<string, bool> powerUps = messageDtoService.GetPowerups(dto);
-                    powerUps.TryGetValue("doubleBomb", out bool isDoubleBomb);
-                    powerUps.TryGetValue("plusShape", out bool plusShape);
-                    powerUps.TryGetValue("xShape", out bool xShape);
-                    powerUps.TryGetValue("superDamage", out bool superDamage);
-                    if (plusShape || xShape || superDamage )
-                    {
-                        await game.ProcessCompositeShot(player.Id, x, y, isDoubleBomb, plusShape, xShape, superDamage);
-                    }
-                    else
-                    {
-                        await game.ProcessShot(player.Id, x, y, isDoubleBomb);
-                    }
-                }
-                (Game? game, IBotPlayerController? bot) botGame = manager.GetBotGame(player.Id);
-                if(botGame.bot != null)
-                {
-                    await botGame.bot.MaybePlayAsync();
-                }
+                new ValidateCoordinatesHandler(),
+                new GameRetrievalHandler(),
+                new ShotProcessingHandler(messageDtoService),
+                new BotTriggerHandler(),
+            };
+            foreach (var shotHandler in shotHandlers)
+            {
+                await shotHandler.HandleAsync(manager, player, dto);
             }
         } 
 

@@ -95,16 +95,17 @@ namespace BattleshipServer.GameManagerFacade
 
         public async Task HandleShot(GameManager manager, PlayerConnection player, MessageDto dto)
         {
-            var validate = new ValidateCoordinatesHandler();
-            var retrieve = new GameRetrievalHandler();
-            var process = new ShotProcessingHandler(messageDtoService);
-            var bot = new BotTriggerHandler();
-
-            validate.SetNext(retrieve);
-            retrieve.SetNext(process);
-            process.SetNext(bot);
-
-            await validate.HandleAsync(manager, player, dto);
+            List<ShotHandler> shotHandlers = new List<ShotHandler>()
+            {
+                new ValidateCoordinatesHandler(),
+                new GameRetrievalHandler(),
+                new ShotProcessingHandler(messageDtoService),
+                new BotTriggerHandler(),
+            };
+            foreach (var shotHandler in shotHandlers)
+            {
+                await shotHandler.HandleAsync(manager, player, dto);
+            }
         } 
 
         public async Task HandlePlaceShield(GameManager manager, PlayerConnection player, MessageDto dto)

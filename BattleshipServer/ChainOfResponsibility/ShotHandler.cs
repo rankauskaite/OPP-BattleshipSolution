@@ -10,11 +10,6 @@ namespace BattleshipServer.ChainOfResponsibility
     public abstract class ShotHandler
     {
         protected ShotHandler? _next;
-        public ShotHandler SetNext(ShotHandler next)
-        {
-            _next = next;
-            return this;
-        }
 
         public async Task HandleAsync(GameManager manager, PlayerConnection player, MessageDto dto)
         {

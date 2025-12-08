@@ -23,7 +23,6 @@ namespace BattleshipServer
         private readonly Database _db = new Database("battleship.db"); 
         private readonly ConcurrentDictionary<Guid, (Game game, IBotPlayerController bot)> _botGames = new();
         private readonly Dictionary<Guid, Game> copiedGames = new();
-        private readonly GameManagerFacade.GameManagerFacade gameManagerFacade = new GameManagerFacade.GameManagerFacade();
         
         public void AddToWaitingQueue(PlayerConnection player)
         {

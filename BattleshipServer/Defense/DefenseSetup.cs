@@ -39,7 +39,6 @@ namespace BattleshipServer.Defense
             if (!shipCells.Any())
                 return;
 
-            // 1) Viena 3x3 SAFETINESS zona (AreaShield)
             var center1 = shipCells[_rng.Next(shipCells.Count)];
             game.AddAreaShield(
                 playerId,
@@ -47,7 +46,6 @@ namespace BattleshipServer.Defense
                 center1.x + 1, center1.y + 1,
                 DefenseMode.Safetiness);
 
-            // 2) Viena 3x3 VISIBILITY zona (AreaShield)
             var center2 = shipCells[_rng.Next(shipCells.Count)];
             game.AddAreaShield(
                 playerId,
@@ -55,7 +53,6 @@ namespace BattleshipServer.Defense
                 center2.x + 1, center2.y + 1,
                 DefenseMode.Visibility);
 
-            // 3) Dar 2 atskiri vieno langelio SAFETINESS skydai (CellShield)
             for (int i = 0; i < 2; i++)
             {
                 var cell = shipCells[_rng.Next(shipCells.Count)];

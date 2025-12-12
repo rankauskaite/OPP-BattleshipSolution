@@ -164,34 +164,18 @@ namespace BattleshipServer.GameManagerFacade
 
             if (isArea)
             {
-                // 3x3 zona aplink pasirinktą langelį (su ribomis 0..9)
                 int x1 = Math.Max(0, x - 1);
                 int y1 = Math.Max(0, y - 1);
                 int x2 = Math.Min(9, x + 1);
                 int y2 = Math.Min(9, y + 1);
 
-                if (mode == DefenseMode.Safetiness)
-                {
-                    // SAFE area – kiekvienam langeliui sukuriam atskirą CellShield
-                    for (int yy = y1; yy <= y2; yy++)
-                    {
-                        for (int xx = x1; xx <= x2; xx++)
-                        {
-                            game.AddCellShield(player.Id, xx, yy, mode);
-                        }
-                    }
-                }
-                else
-                {
-                    // VISIBILITY area – tikras AreaShield, galioja visai zonai
-                    game.AddAreaShield(player.Id, x1, y1, x2, y2, mode);
-                }
+                game.AddAreaShield(player.Id, x1, y1, x2, y2, mode);
             }
             else
             {
-                // Vieno langelio skydas (kaip buvo anksčiau)
                 game.AddCellShield(player.Id, x, y, mode);
             }
+
 
 
             var payload = JsonSerializer.SerializeToElement(new

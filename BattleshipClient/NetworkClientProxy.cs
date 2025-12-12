@@ -11,11 +11,10 @@ namespace BattleshipClient
     /// </summary>
     public class NetworkClientProxy : INetworkClient
     {
-        private readonly Func<INetworkClient> _factory;  // kaip kursim realų klientą
-        private INetworkClient? _inner;                  // RealSubject (lazy)
+        private readonly Func<INetworkClient> _factory;  
+        private INetworkClient? _inner;                
         private readonly string _allowedHost;
 
-        // event'ą turim atskirai – klientas subscribinasi į Proxy
         public event Action<MessageDto> OnMessageReceived;
 
         public NetworkClientProxy(Func<INetworkClient> factory, string allowedHost)
@@ -24,14 +23,12 @@ namespace BattleshipClient
             _allowedHost = allowedHost;
         }
 
-        // Virtual proxy – realų objektą kuriam tik tada, kai JAU reikia
         private void EnsureClient()
         {
             if (_inner != null) return;
 
             _inner = _factory();
 
-            // forwardinam event'us ir pridedam logging (Smart proxy)
             _inner.OnMessageReceived += dto =>
             {
                 File.AppendAllText("network_log.txt",
@@ -43,12 +40,11 @@ namespace BattleshipClient
 
         public async Task ConnectAsync(string wsUri)
         {
-            // Protection proxy – leidžiam jungtis tik prie tam tikro host
             var uri = new Uri(wsUri);
             if (!string.Equals(uri.Host, _allowedHost, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("Connection host is not allowed.");
 
-            EnsureClient(); // Virtual proxy – sukuriam realų klientą tik dabar
+            EnsureClient(); 
             await _inner!.ConnectAsync(wsUri);
         }
 
@@ -56,7 +52,6 @@ namespace BattleshipClient
         {
             EnsureClient();
 
-            // Smart proxy – papildomas funkcionalumas, pvz. logging
             File.AppendAllText("network_log.txt",
                 $"{DateTime.Now:HH:mm:ss} -> {JsonSerializer.Serialize(payload)}{Environment.NewLine}");
 

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using BattleshipServer.Models;
 using BattleshipServer.Domain;
+using BattleshipServer.State;
 
 namespace BattleshipServer.Domain
 {
@@ -48,7 +49,18 @@ namespace BattleshipServer.Domain
         }
 
         /// <summary>
-        /// Pritaiko šūvį. Grąžina rezultatą ir, jeigu nuskendo, visų nuskendusio laivo langelių sąrašą.
+        /// Pabando išgelbėti konkretų laivą lentoje (pvz., panaudojus specialų power-up).
+        /// Pagal State pattern logiką – tik ShipHitState leis tai padaryti.
+        /// </summary>
+        public void SaveShip(Ship ship)
+        {
+            if (ship == null) return;
+            ship.TrySave(Cells);
+        }
+
+        /// <summary>
+        /// Pritaiko šūvį duotoje koordinatėje ir grąžina rezultatą (Miss / Hit / Sunk),
+        /// kartu atnaujindamas lentos ir laivo būsenas.
         /// </summary>
         public ShotOutcome ApplyShot(int x, int y)
         {
@@ -63,21 +75,28 @@ namespace BattleshipServer.Domain
             }
             if (cell == CellState.Ship)
             {
-                Cells[y, x] = CellState.Hit;
-
-                // ar nuskendo konkretus laivas?
+                // Surandame, kuriam laivui priklauso šis langelis
                 var victim = Ships.FirstOrDefault(s => s.Contains(x, y));
-                if (victim != null && victim.IsSunk(Cells) && !victim.MarkedSunk)
+                if (victim != null)
                 {
-                    victim.MarkAsSunk(Cells);
-                    return new ShotOutcome
+                    // Pagrindinė logika deleguojama laivo būsenai (State pattern)
+                    victim.RegisterHit(Cells, x, y);
+
+                    if (victim.MarkedSunk)
                     {
-                        Kind = ShotKind.Sunk,
-                        Cell = new Coordinate(x, y),
-                        SunkCells = victim.Cells().ToList()
-                    };
+                        return new ShotOutcome
+                        {
+                            Kind = ShotKind.Sunk,
+                            Cell = new Coordinate(x, y),
+                            SunkCells = victim.Cells().ToList()
+                        };
+                    }
+
+                    return new ShotOutcome { Kind = ShotKind.Hit, Cell = new Coordinate(x, y) };
                 }
 
+                // Fallback: jei kažkodėl laivo neradome (neturėtų nutikti)
+                Cells[y, x] = CellState.Hit;
                 return new ShotOutcome { Kind = ShotKind.Hit, Cell = new Coordinate(x, y) };
             }
 

@@ -15,5 +15,6 @@ namespace BattleshipServer.Visitor
         Task VisitShotAsync(ShotMessage message, PlayerConnection player);
         Task VisitPlayBotAsync(PlayBotMessage message, PlayerConnection player);
         Task VisitPlaceShieldAsync(PlaceShieldMessage message, PlayerConnection player);
+        Task VisitHealShipAsync(HealShipMessage message, PlayerConnection player);
     }
 }

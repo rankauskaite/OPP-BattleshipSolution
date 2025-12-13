@@ -7,12 +7,12 @@ using BattleshipClient.Models;
 namespace BattleshipClient
 {
     /// <summary>
-    /// NetworkClientProxy: Protection + Smart + Virtual proxy viename.
+    /// NetworkClientProxy: Protection + Smart + Virtual proxy.
     /// </summary>
     public class NetworkClientProxy : INetworkClient
     {
-        private readonly Func<INetworkClient> _factory;  
-        private INetworkClient? _inner;                
+        private readonly Func<INetworkClient> _factory;
+        private INetworkClient? _inner;
         private readonly string _allowedHost;
 
         public event Action<MessageDto> OnMessageReceived;
@@ -44,7 +44,7 @@ namespace BattleshipClient
             if (!string.Equals(uri.Host, _allowedHost, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("Connection host is not allowed.");
 
-            EnsureClient(); 
+            EnsureClient();
             await _inner!.ConnectAsync(wsUri);
         }
 

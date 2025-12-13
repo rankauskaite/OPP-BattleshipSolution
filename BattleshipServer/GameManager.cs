@@ -61,7 +61,11 @@ namespace BattleshipServer
         }
 
         public async Task HandleMessageAsync(PlayerConnection player, MessageDto dto)
-        {
+        { 
+
+            if (dto.Type == "bench")
+                return; 
+                
             GameMessage message = CreateGameMessage(dto);
 
             IGameMessageVisitor validatorVisitor = new GameMessageValidatorVisitor();

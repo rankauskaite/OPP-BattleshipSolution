@@ -1,0 +1,30 @@
+Direct NetworkClient: 1000 msgs
+  connect: 88 ms
+  send:    13 ms
+  mem Δ:   896,3 KB
+
+NetworkClientProxy: 1000 msgs
+  connect: 3 ms
+  send:    248 ms
+  mem Δ:   1611,1 KB
+
+Direct NetworkClient: 1000 msgs
+  connect: 92 ms
+  send:    12 ms
+  mem Δ:   896,1 KB
+
+NetworkClientProxy: 1000 msgs
+  connect: 3 ms
+  send:    242 ms
+  mem Δ:   1611,1 KB
+
+Direct NetworkClient: 1000 msgs
+  connect: 71 ms
+  send:    17 ms
+  mem Δ:   889,0 KB
+
+NetworkClientProxy: 1000 msgs
+  connect: 2 ms
+  send:    203 ms
+  mem Δ:   1595,3 KB
+

@@ -29,14 +29,24 @@ namespace BattleshipServer
             {
                 while (Socket.State == WebSocketState.Open)
                 {
-                    var result = await Socket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-                    if (result.MessageType == WebSocketMessageType.Close)
-                    {
-                        await Socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by client", CancellationToken.None);
-                        break;
-                    }
+                    using var ms = new System.IO.MemoryStream();
+                    WebSocketReceiveResult result;
 
-                    var msg = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    do
+                    {
+                        result = await Socket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+
+                        if (result.MessageType == WebSocketMessageType.Close)
+                        {
+                            await Socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by client", CancellationToken.None);
+                            return;
+                        }
+
+                        ms.Write(buffer, 0, result.Count);
+                    }
+                    while (!result.EndOfMessage);
+
+                    var msg = Encoding.UTF8.GetString(ms.ToArray());
                     var dto = JsonSerializer.Deserialize<MessageDto>(msg, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                     if (dto != null)
                     {
@@ -49,6 +59,7 @@ namespace BattleshipServer
                 Console.WriteLine($"[PlayerConnection] Error: {ex.Message}");
             }
         }
+
 
         public async Task SendAsync(MessageDto dto)
         {

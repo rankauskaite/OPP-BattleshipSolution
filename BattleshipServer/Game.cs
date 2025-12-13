@@ -157,17 +157,20 @@ namespace BattleshipServer
 
         public void AddAreaShield(Guid playerId, int x1, int y1, int x2, int y2, DefenseMode mode)
         {
+            // 3x3 (arba bet kokia zona): Composite sudarytas iš atskirų Leaf langelių.
             int minX = Math.Min(x1, x2);
             int maxX = Math.Max(x1, x2);
             int minY = Math.Min(y1, y2);
             int maxY = Math.Max(y1, y2);
 
+            // Vidinis Composite mazgas, kuris turi 9 (ar N) Leaf vaikų
             var areaComposite = new DefenseComposite();
 
             for (int y = minY; y <= maxY; y++)
             {
                 for (int x = minX; x <= maxX; x++)
                 {
+                    // lenta 10x10
                     if (x < 0 || x > 9 || y < 0 || y > 9)
                         continue;
 
@@ -177,7 +180,6 @@ namespace BattleshipServer
 
             AddDefense(playerId, areaComposite);
         }
-
 
         /// <summary>
         /// Bando išgydyti žaidėjo (playerId) laivą, kurio langelyje (x,y) yra laivas.

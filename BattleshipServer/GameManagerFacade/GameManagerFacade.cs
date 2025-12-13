@@ -9,7 +9,9 @@ using System.Text.Json;
 using System.Threading.Tasks; 
 using BattleshipServer.Defense;
 using BattleshipServer.State;
-using BattleshipServer.ChainOfResponsibility;
+using BattleshipServer.ChainOfResponsibility; 
+using System.IO;
+
 
 
 namespace BattleshipServer.GameManagerFacade
@@ -121,7 +123,7 @@ namespace BattleshipServer.GameManagerFacade
             int y = ye.GetInt32();
 
             string modeStr = "safetiness";
-            if (dto.Payload.TryGetProperty("mode", out var me) && me.ValueKind == JsonValueKind.String)
+            if (dto.Payload.TryGetProperty("placeShield", out var me) && me.ValueKind == JsonValueKind.String)
             {
                 modeStr = me.GetString() ?? "safetiness";
             }
@@ -143,9 +145,20 @@ namespace BattleshipServer.GameManagerFacade
             if (botGame.bot != null)
                 return;
 
-            DefenseMode mode = modeStr == "visibility"
-                ? DefenseMode.Visibility
-                : DefenseMode.Safetiness;
+            modeStr = (modeStr ?? "").Trim().ToLowerInvariant();
+            File.AppendAllText("notes.txt", modeStr + "     Hello\n");
+            DefenseMode mode = modeStr switch
+            {
+                "visibility" => DefenseMode.Visibility,
+                "invisible"  => DefenseMode.Visibility,  // leidžiam sinonimą
+                "visability" => DefenseMode.Visibility,  // dažnas typo
+
+                "safetiness" => DefenseMode.Safetiness,
+                "safety"     => DefenseMode.Safetiness,
+
+                _ => DefenseMode.Safetiness
+            };
+
 
              if (isArea)
             {

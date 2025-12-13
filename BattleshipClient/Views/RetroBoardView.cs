@@ -1,6 +1,7 @@
 using BattleshipClient.Views.Renderers;
 using BattleshipClient.Models;
 using System.Drawing;
+using BattleshipClient.Iterators;
 
 namespace BattleshipClient.Views
 {
@@ -10,13 +11,10 @@ namespace BattleshipClient.Views
 
         public override void DrawBoard(GameBoard board)
         {
-            for (int y = 0; y < board.Size; y++)
+            foreach (var p in new RowMajorCells(board.Size))
             {
-                for (int x = 0; x < board.Size; x++)
-                {
-                    var state = board.GetCell(x, y);
-                    renderer.RenderCell(x, y, state, board, retro: true);
-                }
+                var state = board.GetCell(p.X, p.Y);
+                renderer.RenderCell(p.X, p.Y, state, board, retro: true);
             }
         }
     }

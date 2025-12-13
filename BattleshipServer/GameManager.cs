@@ -10,6 +10,7 @@ using BattleshipServer.Npc;
 using System.Net.WebSockets; 
 using BattleshipServer.Builders;
 using BattleshipServer.Domain;
+using BattleshipServer.MessageHandling;
 
 
 namespace BattleshipServer
@@ -23,6 +24,17 @@ namespace BattleshipServer
         private readonly ConcurrentDictionary<Guid, (Game game, IBotPlayerController bot)> _botGames = new();
         private readonly Dictionary<Guid, Game> copiedGames = new();
         private readonly GameManagerFacade.GameManagerFacade gameManagerFacade = new GameManagerFacade.GameManagerFacade();
+
+        // Chain of Responsibility for incoming messages (>= 4 handlers)
+        private readonly IMessageHandler _messageChain;
+
+        public GameManager()
+        {
+            _messageChain = BuildMessageChain();
+        }
+
+        internal GameManagerFacade.GameManagerFacade Facade => gameManagerFacade;
+        internal Database Db => _db;
 
         public void AddToWaitingQueue(PlayerConnection player)
         {
@@ -61,38 +73,10 @@ namespace BattleshipServer
 
         public async Task HandleMessageAsync(PlayerConnection player, MessageDto dto)
         {
-            switch (dto.Type)
-            {
-                case "register":
-                    await gameManagerFacade.RegisterPlayerAsync(this, player, dto);
-                    TryPairPlayers();
-                    break;
-
-                case "ready":
-                    await gameManagerFacade.MarkPlayerAsReady(this, player, dto);
-                    break;
-                case "copyGame":
-                    await gameManagerFacade.CopyGame(this, player);
-                    break;
-                case "useGameCopy":
-                    await gameManagerFacade.UseGameCopy(this, player);
-                    break;
-                case "shot":
-                    await gameManagerFacade.HandleShot(this, player, dto);
-                    break;
-                case "playBot":
-                    gameManagerFacade.HandlePlayBot(this, player, dto, _db);
-                    break; 
-                case "placeShield":
-                    await gameManagerFacade.HandlePlaceShield(this, player, dto);
-                    break;
-                default:
-                    Console.WriteLine($"[Manager] Unknown message type: {dto.Type}");
-                    break;
-            }
+            await _messageChain.HandleAsync(player, dto);
         }
 
-        private async void TryPairPlayers()
+        internal async Task TryPairPlayersAsync()
         {
             if (_waiting.Count >= 2)
             {
@@ -114,6 +98,21 @@ namespace BattleshipServer
                     Console.WriteLine($"[Manager] Paired: {p1.Name} <-> {p2.Name}");
                 }
             }
+        }
+
+        private IMessageHandler BuildMessageChain()
+        {
+            // Order is the chain order. Unknown handler is last.
+            IMessageHandler h1 = new RegisterMessageHandler(this);
+            var h2 = h1.SetNext(new ReadyMessageHandler(this));
+            var h3 = h2.SetNext(new CopyGameMessageHandler(this));
+            var h4 = h3.SetNext(new UseGameCopyMessageHandler(this));
+            var h5 = h4.SetNext(new ShotMessageHandler(this));
+            var h6 = h5.SetNext(new PlayBotMessageHandler(this));
+            var h7 = h6.SetNext(new PlaceShieldMessageHandler(this));
+            var h8 = h7.SetNext(new BenchMessageHandler(this));
+            h8.SetNext(new UnknownMessageHandler(this));
+            return h1;
         }
 
         public void GameEnded(Game g)

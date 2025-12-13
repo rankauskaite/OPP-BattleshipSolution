@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Threading.Tasks;
 
 namespace BattleshipClient
@@ -12,21 +13,40 @@ namespace BattleshipClient
             string label,
             int messageCount)
         {
-            var sw = Stopwatch.StartNew();
-            await client.ConnectAsync(uri);
+            // Stabilus startas (kad palyginimas būtų arčiau realybės)
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+            long memBefore = GC.GetTotalMemory(false);
 
+            var swConnect = Stopwatch.StartNew();
+            await client.ConnectAsync(uri);
+            swConnect.Stop();
+
+            // Warm-up (JIT/first call)
+            await client.SendAsync(new { type = "bench", payload = new { index = -1 } });
+
+            var swSend = Stopwatch.StartNew();
             for (int i = 0; i < messageCount; i++)
             {
-                var msg = new { type = "ping", payload = new { index = i } };
+                // Serveris turi "bench" handlerį, kuris nieko nedaro (be spam'o)
+                var msg = new { type = "bench", payload = new { index = i } };
                 await client.SendAsync(msg);
             }
+            swSend.Stop();
 
-            sw.Stop();
-            long memoryBytes = GC.GetTotalMemory(true);
+            long memAfter = GC.GetTotalMemory(false);
+            long memDelta = memAfter - memBefore;
 
-            Console.WriteLine(
-                $"{label}: {messageCount} msgs, time = {sw.ElapsedMilliseconds} ms, " +
-                $"memory = {memoryBytes / 1024.0:0.0} KB");
+            var report =
+                $"{label}: {messageCount} msgs\n" +
+                $"  connect: {swConnect.ElapsedMilliseconds} ms\n" +
+                $"  send:    {swSend.ElapsedMilliseconds} ms\n" +
+                $"  mem Δ:   {memDelta / 1024.0:0.0} KB\n";
+
+            // WinForms (WinExe) dažnai nerodo Console output, todėl rašom į failą
+            File.AppendAllText("benchmark_results.txt", report + Environment.NewLine);
+            Console.WriteLine(report);
         }
     }
 }

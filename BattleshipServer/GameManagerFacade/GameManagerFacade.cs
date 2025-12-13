@@ -169,6 +169,7 @@ namespace BattleshipServer.GameManagerFacade
                 int x2 = Math.Min(9, x + 1);
                 int y2 = Math.Min(9, y + 1);
 
+                // Zona visada dedama kaip tikras Composite: viduje bus 9 Leaf (CellShield).
                 game.AddAreaShield(player.Id, x1, y1, x2, y2, mode);
             }
             else

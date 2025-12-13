@@ -11,27 +11,26 @@ namespace BattleshipServer.Defense
     }
 
     /// <summary>
-    /// GoF Composite "Component".
+    /// GoF Composite: Component
     ///
-    /// UML'e dažniausiai matysi Operation(), Add(), Remove(), GetChild().
-    /// Mūsų domenui Operation turi (x,y), nes gynyba priklauso nuo langelio.
+    /// UML "Operation()" tavo domeine yra "GetMode(x,y)".
+    /// Kad UML atitiktų skaidrę, Component taip pat deklaruoja Add/Remove/GetChild.
+    /// Leaf šiuos metodus laiko nepalaikomais (NotSupportedException).
     /// </summary>
     public interface IDefenseComponent
     {
-        // Domeninis "Operation" – pagal koordinatę pasako, koks gynybos režimas galioja langeliui.
+        // Operation(x,y)
         DefenseMode GetMode(int x, int y);
 
-        // GoF Operation(x,y) – paliekam kaip alias, kad UML atitiktų "Operation()".
-        DefenseMode Operation(int x, int y) => GetMode(x, y);
-
-        // GoF Composite valdymo metodai.
-        // Leaf pagal nutylėjimą jų nepalaiko (mėto išimtį) – kaip klasikinėje Composite interpretacijoje.
-        void Add(IDefenseComponent item) => throw new NotSupportedException("Leaf komponentas neturi vaikų.");
-        void Remove(IDefenseComponent item) => throw new NotSupportedException("Leaf komponentas neturi vaikų.");
-        IDefenseComponent GetChild(int index) => throw new NotSupportedException("Leaf komponentas neturi vaikų.");
+        // Composite operations
+        void Add(IDefenseComponent item);
+        void Remove(IDefenseComponent item);
+        IDefenseComponent GetChild(int index);
     }
 
-    // Vieno langelio skydas
+    /// <summary>
+    /// GoF Composite: Leaf (vienas langelis)
+    /// </summary>
     public sealed class CellShield : IDefenseComponent
     {
         public int X { get; }
@@ -51,8 +50,7 @@ namespace BattleshipServer.Defense
             {
                 var current = Mode;
 
-                // SAFETINESS skydas suveikia tik vieną kartą:
-                // po šito šūvio jis išsijungia, kad kitą kartą šūvis jau pataikytų į laivą.
+                // SAFETINESS: suveikia 1 kartą konkrečiam langeliui, po to išsijungia
                 if (current == DefenseMode.Safetiness)
                 {
                     Mode = DefenseMode.None;
@@ -64,77 +62,52 @@ namespace BattleshipServer.Defense
             return DefenseMode.None;
         }
 
+        // Leaf neturi vaikų (kaip GoF: Leaf nepalaiko Add/Remove/GetChild)
+        public void Add(IDefenseComponent item) =>
+            throw new NotSupportedException("Leaf negali turėti vaikų (Add nepalaikomas)");
+
+        public void Remove(IDefenseComponent item) =>
+            throw new NotSupportedException("Leaf neturi vaikų (Remove nepalaikomas)");
+
+        public IDefenseComponent GetChild(int index) =>
+            throw new NotSupportedException("Leaf neturi vaikų (GetChild nepalaikomas)");
+
         public void ChangeMode(DefenseMode newMode) => Mode = newMode;
     }
 
     /// <summary>
-    /// GoF Composite "Composite" – gali turėti daug vaikų (CellShield, AreaShieldComposite, ...).
+    /// GoF Composite: Composite (turi daug vaikų)
     /// </summary>
-    public class DefenseComposite : IDefenseComponent
+    public sealed class DefenseComposite : IDefenseComponent
     {
-        protected readonly List<IDefenseComponent> Children = new();
+        // <-- ČIA ir yra "children" (GoF Composite ryšys Composite -> daug Component)
+        private readonly List<IDefenseComponent> _children = new();
 
-        public virtual void Add(IDefenseComponent item)
+        public void Add(IDefenseComponent item)
         {
-            if (item == null)
-                throw new ArgumentNullException(nameof(item));
-            Children.Add(item);
+            if (item == null) throw new ArgumentNullException(nameof(item));
+            _children.Add(item);
         }
 
-        public virtual void Remove(IDefenseComponent item)
+        public void Remove(IDefenseComponent item)
         {
-            Children.Remove(item);
+            _children.Remove(item);
         }
 
-        public virtual IDefenseComponent GetChild(int index) => Children[index];
-
-        public virtual DefenseMode GetMode(int x, int y)
+        public IDefenseComponent GetChild(int index)
         {
-            foreach (var child in Children)
+            return _children[index];
+        }
+
+        public DefenseMode GetMode(int x, int y)
+        {
+            foreach (var child in _children)
             {
-                // Naudojam GoF "Operation" alias (interface default metodą), kad atitiktų UML.
-                // Realiai jis kviečia child.GetMode(x,y).
-                var mode = child.Operation(x, y);
+                var mode = child.GetMode(x, y);
                 if (mode != DefenseMode.None)
                     return mode;
             }
             return DefenseMode.None;
-        }
-    }
-
-    /// <summary>
-    /// 3x3 (ar bendrai stačiakampio) zona, sudaryta iš kitų "Leaf" (CellShield) objektų.
-    ///
-    /// Tai yra tai, ko tau trūko: vietoje koordinatinių skaičiavimų (x1..x2, y1..y2)
-    /// mes realiai sukonstruojam 9 vaikinius langelius ir Composite tik per juos deleguoja Operation().
-    /// </summary>
-    public sealed class AreaShieldComposite : DefenseComposite
-    {
-        public int X1 { get; }
-        public int Y1 { get; }
-        public int X2 { get; }
-        public int Y2 { get; }
-        public DefenseMode Mode { get; }
-
-        public AreaShieldComposite(int x1, int y1, int x2, int y2, DefenseMode mode, int boardSize = 10)
-        {
-            // sutvarkom ribas ir suklampinam į lentą
-            var minX = Math.Min(x1, x2);
-            var minY = Math.Min(y1, y2);
-            var maxX = Math.Max(x1, x2);
-            var maxY = Math.Max(y1, y2);
-
-            minX = Math.Clamp(minX, 0, boardSize - 1);
-            minY = Math.Clamp(minY, 0, boardSize - 1);
-            maxX = Math.Clamp(maxX, 0, boardSize - 1);
-            maxY = Math.Clamp(maxY, 0, boardSize - 1);
-
-            X1 = minX; Y1 = minY; X2 = maxX; Y2 = maxY;
-            Mode = mode;
-
-            for (int y = Y1; y <= Y2; y++)
-                for (int x = X1; x <= X2; x++)
-                    Add(new CellShield(x, y, Mode));
         }
     }
 }

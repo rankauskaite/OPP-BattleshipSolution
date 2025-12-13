@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -29,14 +30,23 @@ namespace BattleshipServer
             {
                 while (Socket.State == WebSocketState.Open)
                 {
-                    var result = await Socket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-                    if (result.MessageType == WebSocketMessageType.Close)
+                    // WebSocket pranešimas gali ateiti keliais gabalais,
+                    // todėl renkame iki EndOfMessage == true.
+                    using var ms = new MemoryStream();
+                    WebSocketReceiveResult result;
+                    do
                     {
-                        await Socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by client", CancellationToken.None);
-                        break;
+                        result = await Socket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+                        if (result.MessageType == WebSocketMessageType.Close)
+                        {
+                            await Socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by client", CancellationToken.None);
+                            return;
+                        }
+                        ms.Write(buffer, 0, result.Count);
                     }
+                    while (!result.EndOfMessage);
 
-                    var msg = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    var msg = Encoding.UTF8.GetString(ms.ToArray());
                     var dto = JsonSerializer.Deserialize<MessageDto>(msg, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                     if (dto != null)
                     {

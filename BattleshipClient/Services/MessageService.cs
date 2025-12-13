@@ -118,6 +118,9 @@ namespace BattleshipClient.Services
                 break;
                 }
 
+                case "healApplied":
+                    HandleHealApplied(dto.Payload, form);
+                    break;
 
                 case "gameOver":
                     if (dto.Payload.TryGetProperty("winnerId", out var w))
@@ -144,6 +147,49 @@ namespace BattleshipClient.Services
                 case "scoreUpdate":
                     form.UpdateScoreboardUI(dto.Payload);
                     break;
+            }
+        }
+        private void HandleHealApplied(JsonElement payload, MainForm form)
+        {
+            string healedPlayerId = payload.GetProperty("healedPlayerId").GetString();
+
+            var cells = payload
+                .GetProperty("cells")
+                .EnumerateArray()
+                .Select(c => new System.Drawing.Point(
+                    c.GetProperty("x").GetInt32(),
+                    c.GetProperty("y").GetInt32()))
+                .ToList();
+
+            if (healedPlayerId == form.myId)
+            {
+                // Mano laivas buvo pagydytas:
+                // mano lentoje Hit -> Ship (jei dar nesusitvarkė lokaliai)
+                foreach (var cell in cells)
+                {
+                    var state = form.ownBoard.GetCell(cell.X, cell.Y);
+                    if (state == CellState.Hit)
+                        form.ownBoard.SetCell(cell.X, cell.Y, CellState.Ship);
+                }
+                form.ownBoard.Invalidate();
+                form.lblStatus.Text = "Tavo laivas buvo pagydytas.";
+            }
+            else
+            {
+                // Priešininko laivas pagydytas:
+                // mano enemyBoard'e tie Hit turi „išsivalyti“ (vėl tapti nešaudytais / vandeniu)
+                foreach (var cell in cells)
+                {
+                    var state = form.enemyBoard.GetCell(cell.X, cell.Y);
+                    if (state == CellState.Hit)
+                    {
+                        // Čia panaudok tą būseną, kurią naudoji neutraliam langeliui:
+                        // jei turi CellState.Empty ar CellState.Unknown – dėk ją
+                        form.enemyBoard.SetCell(cell.X, cell.Y, CellState.Empty);
+                    }
+                }
+                form.enemyBoard.Invalidate();
+                form.lblStatus.Text = "Priešininkas pagydė savo laivą – keli tavo pataikymai dingo.";
             }
         }
     }

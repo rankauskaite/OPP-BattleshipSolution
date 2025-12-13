@@ -1,17 +1,19 @@
-﻿﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
-using BattleshipServer.Models;
 using BattleshipServer.Data;
-using System.Xml.Linq; 
-using BattleshipServer.Npc;
-using System.Net.WebSockets; 
-using BattleshipServer.Builders;
 using BattleshipServer.Domain;
+using BattleshipServer.Models;
+using BattleshipServer.Npc;
+
+// tavo šakos (CoR)
 using BattleshipServer.MessageHandling;
 
+// kita šaka (Visitor/State) – paliekam, kad “nieko neištrint”
+using BattleshipServer.Visitor;
+using BattleshipServer.State;
 
 namespace BattleshipServer
 {
@@ -20,13 +22,23 @@ namespace BattleshipServer
         private readonly ConcurrentQueue<PlayerConnection> _waiting = new();
         private readonly ConcurrentDictionary<Guid, Game> _playerToGame = new();
         private readonly List<Game> _games = new();
-        private readonly Database _db = new Database("battleship.db"); 
+        private readonly Database _db = new Database("battleship.db");
         private readonly ConcurrentDictionary<Guid, (Game game, IBotPlayerController bot)> _botGames = new();
         private readonly Dictionary<Guid, Game> copiedGames = new();
-        private readonly GameManagerFacade.GameManagerFacade gameManagerFacade = new GameManagerFacade.GameManagerFacade();
 
-        // Chain of Responsibility for incoming messages (>= 4 handlers)
+        // Facade (kaip buvo Prašau_1 šakoje)
+        private readonly GameManagerFacade.GameManagerFacade gameManagerFacade =
+            new GameManagerFacade.GameManagerFacade();
+
+        // Chain of Responsibility (>= 4 handlers) – paliekam kaip pagrindinį apdorojimą
         private readonly IMessageHandler _messageChain;
+
+        // Visitor pipeline paliekam (kad “neištrinti”), bet default – tik validacija+log
+        private readonly bool _useVisitorValidationAndLogging = true;
+
+        // Jei norėsi kada perjungti, kad Visitor darytų ir handling – nustatyk true.
+        // Palieku false, kad nesidubliuotų su CoR (kitaip tas pats message būtų apdorotas 2 kartus).
+        private readonly bool _useVisitorAsPrimaryHandler = false;
 
         public GameManager()
         {
@@ -36,28 +48,13 @@ namespace BattleshipServer
         internal GameManagerFacade.GameManagerFacade Facade => gameManagerFacade;
         internal Database Db => _db;
 
-        public void AddToWaitingQueue(PlayerConnection player)
-        {
-            _waiting.Enqueue(player);
-        }
+        public void AddToWaitingQueue(PlayerConnection player) => _waiting.Enqueue(player);
 
         public Game? GetPlayersGame(Guid playerId)
-        {
-            if (_playerToGame.TryGetValue(playerId, out var game))
-            {
-                return game;
-            }
-            return null;
-        }
+            => _playerToGame.TryGetValue(playerId, out var game) ? game : null;
 
         public (Game? game, IBotPlayerController? bot) GetBotGame(Guid playerId)
-        {
-            if (_botGames.TryGetValue(playerId, out var bg))
-            {
-                return bg;
-            }
-            return (null, null);
-        }
+            => _botGames.TryGetValue(playerId, out var bg) ? bg : (null, null);
 
         public void AddGame(Game game, Guid playerId)
         {
@@ -67,15 +64,62 @@ namespace BattleshipServer
 
         public void AddGame(Game game, Guid playerId, IBotPlayerController orchestrator)
         {
-            this.AddGame(game, playerId);
+            AddGame(game, playerId);
             _botGames[playerId] = (game, orchestrator);
         }
 
         public async Task HandleMessageAsync(PlayerConnection player, MessageDto dto)
         {
+            // 1) Visitor pipeline (validacija + log) – paliekam iš main šakos
+            if (_useVisitorValidationAndLogging)
+            {
+                try
+                {
+                    var message = CreateGameMessage(dto);
+
+                    IGameMessageVisitor validatorVisitor = new GameMessageValidatorVisitor();
+                    IGameMessageVisitor logVisitor = new GameMessageLogVisitor();
+
+                    await message.AcceptAsync(validatorVisitor, player);
+                    await message.AcceptAsync(logVisitor, player);
+
+                    // Jei kada norėsi, gali perjungti į Visitor-handling režimą
+                    if (_useVisitorAsPrimaryHandler)
+                    {
+                        IGameMessageVisitor handlerVisitor = new GameMessageHandlerVisitor(this, _db);
+                        await message.AcceptAsync(handlerVisitor, player);
+                        return;
+                    }
+                }
+                catch (ArgumentException)
+                {
+                    // Unknown message type – tegul apdoroja CoR (UnknownMessageHandler)
+                }
+            }
+
+            // 2) Pagrindinis apdorojimas per Chain of Responsibility (Prašau_1 šaka)
             await _messageChain.HandleAsync(player, dto);
         }
 
+        // Paliekam CreateGameMessage iš main šakos (Visitor)
+        // Pastaba: bench/unknown čia specialiai neįdėti – juos sugauna CoR.
+        private GameMessage CreateGameMessage(MessageDto dto)
+        {
+            return dto.Type switch
+            {
+                "register" => new RegisterGameMessage(dto),
+                "ready" => new ReadyMessage(dto),
+                "copyGame" => new CopyGameMessage(dto),
+                "useGameCopy" => new UseGameCopyMessage(dto),
+                "shot" => new ShotMessage(dto),
+                "playBot" => new PlayBotMessage(dto),
+                "placeShield" => new PlaceShieldMessage(dto),
+                "healShip" => new HealShipMessage(dto),
+                _ => throw new ArgumentException($"Unknown message type: {dto.Type}"),
+            };
+        }
+
+        // Pairing (paliekam async Task versiją)
         internal async Task TryPairPlayersAsync()
         {
             if (_waiting.Count >= 2)
@@ -87,11 +131,11 @@ namespace BattleshipServer
                     _playerToGame[p1.Id] = g;
                     _playerToGame[p2.Id] = g;
 
-                    // Show player names on scoreboard
                     await Scoreboard.Instance.RegisterPlayers(p1.Name, p2.Name, g);
 
-                    // Notify both that they were paired
-                    var pairedPayload = JsonSerializer.SerializeToElement(new { message = $"Paired: {p1.Name} <-> {p2.Name}" });
+                    var pairedPayload = JsonSerializer.SerializeToElement(
+                        new { message = $"Paired: {p1.Name} <-> {p2.Name}" });
+
                     _ = p1.SendAsync(new MessageDto { Type = "info", Payload = pairedPayload });
                     _ = p2.SendAsync(new MessageDto { Type = "info", Payload = pairedPayload });
 
@@ -100,9 +144,12 @@ namespace BattleshipServer
             }
         }
 
+        // Wrapper, jei kažkur tavo kode kviečiamas senas sync pavadinimas
+        public void TryPairPlayers() => _ = TryPairPlayersAsync();
+
         private IMessageHandler BuildMessageChain()
         {
-            // Order is the chain order. Unknown handler is last.
+            // Chain order, Unknown last
             IMessageHandler h1 = new RegisterMessageHandler(this);
             var h2 = h1.SetNext(new ReadyMessageHandler(this));
             var h3 = h2.SetNext(new CopyGameMessageHandler(this));
@@ -125,62 +172,9 @@ namespace BattleshipServer
             Console.WriteLine("[Manager] Game removed.");
         }
 
-        public void StoreGameCopy(Guid playerId, Game game)
-        {
-            copiedGames[playerId] = game;
-        }
+        public void StoreGameCopy(Guid playerId, Game game) => copiedGames[playerId] = game;
 
         public Game? GetCopiedGame(Guid playerId)
-        {
-            if (copiedGames.TryGetValue(playerId, out var game))
-            {
-                return game;
-            }
-            return null;
-        }
-
-
-        // private static List<ShipDto> RandomFleet(bool standart)
-        // {
-        //     var lens = standart ? new[] {4, 3, 3, 2, 2, 2, 1, 1, 1, 1} : new[] {3, 2, 2, 2, 1};
-        //     var rnd = new Random();
-        //     var used = new int[10,10];
-        //     var list = new List<ShipDto>();
-
-        //     foreach (var L in lens)
-        //     {
-        //         bool placed = false;
-        //         for (int tries=0; tries<500 && !placed; tries++)
-        //         {
-        //             bool horiz = rnd.Next(2)==0;
-        //             int x = rnd.Next(0, 10 - (horiz ? L : 0));
-        //             int y = rnd.Next(0, 10 - (horiz ? 0 : L));
-        //             if (CanPlace(used, x, y, L, horiz))
-        //             {
-        //                 for (int i=0;i<L;i++)
-        //                 {
-        //                     int cx = x + (horiz? i:0);
-        //                     int cy = y + (horiz? 0:i);
-        //                     used[cy, cx] = 1;
-        //                 }
-        //                 list.Add(new ShipDto { X=x, Y=y, Len=L, Dir=horiz?"H":"V" });
-        //                 placed = true;
-        //             }
-        //         }
-        //     }
-        //     return list;
-
-        //     static bool CanPlace(int[,] b, int x, int y, int len, bool h)
-        //     {
-        //         for (int i=0;i<len;i++)
-        //         {
-        //             int cx = x + (h? i:0);
-        //             int cy = y + (h? 0:i);
-        //             if (cx<0||cx>=10||cy<0||cy>=10) return false;
-        //             if (b[cy,cx]!=0) return false;
-        //         }
-        //         return true;
-        //     }
-        // }
+            => copiedGames.TryGetValue(playerId, out var game) ? game : null;
     }
 }

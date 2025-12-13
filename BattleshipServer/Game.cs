@@ -5,11 +5,11 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text.Json;
+using System.Linq;
 using System.Threading.Tasks;
 using BattleshipServer.GameFacade; 
 using BattleshipServer.Defense;
-
-
+using BattleshipServer.State;
 using BattleshipServer.PowerUps;
 
 
@@ -181,6 +181,69 @@ namespace BattleshipServer
             AddDefense(playerId, areaComposite);
         }
 
+
+        /// <summary>
+        /// Bando išgydyti žaidėjo (playerId) laivą, kurio langelyje (x,y) yra laivas.
+        /// Išgelbėti galima tik pašautą, bet nenušautą laivą.
+        /// Grąžina sąrašą langelių, kurie iš Hit (3) virto į Ship (1).
+        /// Jei nepavyko – grąžina tuščią sąrašą.
+        /// </summary>
+        public List<(int x, int y)> HealShip(Guid playerId, int x, int y)
+        {
+            int[,] board;
+            List<Ship> ships;
+
+            if (playerId == Player1.Id)
+            {
+                board = _board1;
+                ships = _ships1;
+            }
+            else if (playerId == Player2.Id)
+            {
+                board = _board2;
+                ships = _ships2;
+            }
+            else
+            {
+                // neturėtų nutikti
+                return new List<(int, int)>();
+            }
+
+            // Surandame laivą, kuriam priklauso šis langelis.
+            Ship? ship = ships.FirstOrDefault(s => s.Contains(x, y));
+            if (ship == null)
+            {
+                // šitam langelyje laivo nėra
+                return new List<(int, int)>();
+            }
+
+            // Reikalavimas: išgelbėti galima tik pašautą, bet nenušautą.
+            if (!ship.IsDamagedButNotSunk(board))
+            {
+                return new List<(int, int)>();
+            }
+
+            // Atliekam gydymą – visus Hit (3) paverčiam Ship (1)
+            var healedCells = new List<(int x, int y)>();
+
+            for (int i = 0; i < ship.Len; i++)
+            {
+                int cx = ship.Horizontal ? ship.X + i : ship.X;
+                int cy = ship.Horizontal ? ship.Y : ship.Y + i;
+
+                if (cx < 0 || cx >= 10 || cy < 0 || cy >= 10)
+                    continue;
+
+                if (board[cy, cx] == 3)  // buvo Hit
+                {
+                    board[cy, cx] = 1;   // dabar Ship (sveikas)
+                    healedCells.Add((cx, cy));
+                }
+            }
+
+            return healedCells;
+        }
+
         public bool GetIsGameOver()
         {
             return _isGameOver;
@@ -232,7 +295,7 @@ namespace BattleshipServer
                 Dir = s.Horizontal ? "H" : "V"
             }).ToList();
             return shipsDto;
-        } 
+        }
 
 
 
@@ -247,29 +310,107 @@ namespace BattleshipServer
 
             public Ship(int x, int y, int len, bool horizontal)
             {
-                X = x; Y = y; Len = len; Horizontal = horizontal;
+                X = x;
+                Y = y;
+                Len = len;
+                Horizontal = horizontal;
             }
 
+            /// <summary>
+            /// Ar koordinatė (x, y) priklauso šiam laivui.
+            /// </summary>
+            public bool Contains(int x, int y)
+            {
+                if (Horizontal)
+                {
+                    return y == Y && x >= X && x < X + Len;
+                }
+                else
+                {
+                    return x == X && y >= Y && y < Y + Len;
+                }
+            }
+
+            /// <summary>
+            /// Ar šis laivas visiškai nuskendęs: visi jo langeliai yra 3 (Hit) arba 4 (Sunk).
+            /// </summary>
             public bool IsSunk(int[,] board)
             {
                 for (int i = 0; i < Len; i++)
                 {
                     int cx = X + (Horizontal ? i : 0);
                     int cy = Y + (Horizontal ? 0 : i);
-                    if (cx < 0 || cx >= 10 || cy < 0 || cy >= 10) return false;
-                    if (board[cy, cx] != 3 && board[cy, cx] != 4) return false;
+
+                    if (cx < 0 || cx >= 10 || cy < 0 || cy >= 10)
+                        return false;
+
+                    int cell = board[cy, cx];
+                    if (cell != 3 && cell != 4) // 3 = Hit, 4 = Sunk
+                        return false;
                 }
                 return true;
             }
 
+            /// <summary>
+            /// Pažymi visus laivo langelius kaip nuskendusius (4).
+            /// </summary>
             public void setAsSunk(int[,] board)
             {
                 for (int i = 0; i < Len; i++)
                 {
                     int cx = X + (Horizontal ? i : 0);
                     int cy = Y + (Horizontal ? 0 : i);
-                    if (cx < 0 || cx >= 10 || cy < 0 || cy >= 10) return;
-                    board[cy, cx] = 4;
+
+                    if (cx < 0 || cx >= 10 || cy < 0 || cy >= 10)
+                        return;
+
+                    board[cy, cx] = 4; // 4 = Sunk
+                }
+            }
+
+            /// <summary>
+            /// Ar laivas yra „pašautas, bet nenušautas“:
+            /// turi bent vieną langelį su 3 (Hit), bet visas laivas dar ne IsSunk(board).
+            /// Tai atitinka dėstytojo sąlygą „išgelbėti galima tik pašautą, bet nenušautą“.
+            /// </summary>
+            public bool IsDamagedButNotSunk(int[,] board)
+            {
+                bool hasHit = false;
+
+                for (int i = 0; i < Len; i++)
+                {
+                    int cx = X + (Horizontal ? i : 0);
+                    int cy = Y + (Horizontal ? 0 : i);
+
+                    if (cx < 0 || cx >= 10 || cy < 0 || cy >= 10)
+                        continue;
+
+                    if (board[cy, cx] == 3) // 3 = Hit
+                    {
+                        hasHit = true;
+                    }
+                }
+
+                return hasHit && !IsSunk(board);
+            }
+
+            /// <summary>
+            /// „Išgydo“ laivą – visus Hit (3) langelius paverčia atgal į Ship (1).
+            /// </summary>
+            public void Heal(int[,] board)
+            {
+                for (int i = 0; i < Len; i++)
+                {
+                    int cx = X + (Horizontal ? i : 0);
+                    int cy = Y + (Horizontal ? 0 : i);
+
+                    if (cx < 0 || cx >= 10 || cy < 0 || cy >= 10)
+                        continue;
+
+                    if (board[cy, cx] == 3) // 3 = Hit
+                    {
+                        board[cy, cx] = 1; // 1 = Ship (sveikas)
+                    }
                 }
             }
 

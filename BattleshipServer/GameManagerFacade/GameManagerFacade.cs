@@ -8,6 +8,8 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks; 
 using BattleshipServer.Defense;
+using BattleshipServer.State;
+using BattleshipServer.ChainOfResponsibility;
 
 
 namespace BattleshipServer.GameManagerFacade
@@ -94,34 +96,17 @@ namespace BattleshipServer.GameManagerFacade
 
         public async Task HandleShot(GameManager manager, PlayerConnection player, MessageDto dto)
         {
-            if (dto.Payload.TryGetProperty("x", out var xe) && dto.Payload.TryGetProperty("y", out var ye))
-            {
-                int x = xe.GetInt32();
-                int y = ye.GetInt32();
-                Game? game = manager.GetPlayersGame(player.Id);
-                if (game != null)
-                {
-                    Dictionary<string, bool> powerUps = messageDtoService.GetPowerups(dto);
-                    powerUps.TryGetValue("doubleBomb", out bool isDoubleBomb);
-                    powerUps.TryGetValue("plusShape", out bool plusShape);
-                    powerUps.TryGetValue("xShape", out bool xShape);
-                    powerUps.TryGetValue("superDamage", out bool superDamage);
-                    if (plusShape || xShape || superDamage )
-                    {
-                        await game.ProcessCompositeShot(player.Id, x, y, isDoubleBomb, plusShape, xShape, superDamage);
-                    }
-                    else
-                    {
-                        await game.ProcessShot(player.Id, x, y, isDoubleBomb);
-                    }
-                }
-                (Game? game, IBotPlayerController? bot) botGame = manager.GetBotGame(player.Id);
-                if(botGame.bot != null)
-                {
-                    await botGame.bot.MaybePlayAsync();
-                }
-            }
-        } 
+            var validate = new ValidateCoordinatesHandler();
+            var retrieve = new GameRetrievalHandler();
+            var process = new ShotProcessingHandler(messageDtoService);
+            var bot = new BotTriggerHandler();
+
+            validate.SetNext(retrieve);
+            retrieve.SetNext(process);
+            process.SetNext(bot);
+
+            await validate.HandleAsync(manager, player, dto);
+        }
 
         public async Task HandlePlaceShield(GameManager manager, PlayerConnection player, MessageDto dto)
         {
@@ -188,6 +173,56 @@ namespace BattleshipServer.GameManagerFacade
             await player.SendAsync(new MessageDto { Type = "info", Payload = payload });
         }
 
+        public async Task HandleHealShip(GameManager manager, PlayerConnection player, MessageDto dto)
+        {
+            var game = manager.GetPlayersGame(player.Id);
+            if (game == null)
+                return;
+
+            var payload = dto.Payload;
+
+            // Perskaitom langelių sąrašą iš žinutės
+            var cells = new List<(int x, int y)>();
+            foreach (var cell in payload.GetProperty("cells").EnumerateArray())
+            {
+                int x = cell.GetProperty("x").GetInt32();
+                int y = cell.GetProperty("y").GetInt32();
+                cells.Add((x, y));
+            }
+
+            if (cells.Count == 0)
+                return;
+
+            // Naudojam pirmą langelį kaip atskaitos tašką – pagal jį randam laivą
+            var first = cells[0];
+
+            var healedCells = game.HealShip(player.Id, first.x, first.y);
+
+            if (healedCells.Count == 0)
+            {
+                // nieko neišgydė (laivas nenusautas, nuskendęs ar pan.) – nieko nesiunčiam
+                return;
+            }
+
+            // Paruošiam atsakymo payload – kuriuos langelius reikia atnaujinti klientams
+            var responsePayload = JsonSerializer.SerializeToElement(new
+            {
+                healedPlayerId = player.Id.ToString(),
+                cells = healedCells
+                    .Select(c => new { x = c.x, y = c.y })
+                    .ToArray()
+            });
+
+            var response = new MessageDto
+            {
+                Type = "healApplied",
+                Payload = responsePayload
+            };
+
+            // Išsiunčiam abiem žaidėjams – abu turi atsinaujinti lentas
+            await game.Player1.SendAsync(response);
+            await game.Player2.SendAsync(response);
+        }
 
         public void HandlePlayBot(GameManager manager, PlayerConnection player, MessageDto dto, Database db)
         {

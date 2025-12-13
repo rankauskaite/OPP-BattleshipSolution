@@ -46,5 +46,11 @@
             Console.WriteLine("[Log] Use game copy message received.");
             return Task.CompletedTask;
         }
+
+        public Task VisitHealShipAsync(HealShipMessage message, PlayerConnection player)
+        {
+            Console.WriteLine($"[LOG] healShip from {player.Name}: {message.Dto.Payload}");
+            return Task.CompletedTask;
+        }
     }
 }

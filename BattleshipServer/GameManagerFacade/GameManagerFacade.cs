@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks; 
 using BattleshipServer.Defense;
+using BattleshipServer.State;
 using BattleshipServer.ChainOfResponsibility;
 
 
@@ -187,6 +188,56 @@ namespace BattleshipServer.GameManagerFacade
             await player.SendAsync(new MessageDto { Type = "info", Payload = payload });
         }
 
+        public async Task HandleHealShip(GameManager manager, PlayerConnection player, MessageDto dto)
+        {
+            var game = manager.GetPlayersGame(player.Id);
+            if (game == null)
+                return;
+
+            var payload = dto.Payload;
+
+            // Perskaitom langelių sąrašą iš žinutės
+            var cells = new List<(int x, int y)>();
+            foreach (var cell in payload.GetProperty("cells").EnumerateArray())
+            {
+                int x = cell.GetProperty("x").GetInt32();
+                int y = cell.GetProperty("y").GetInt32();
+                cells.Add((x, y));
+            }
+
+            if (cells.Count == 0)
+                return;
+
+            // Naudojam pirmą langelį kaip atskaitos tašką – pagal jį randam laivą
+            var first = cells[0];
+
+            var healedCells = game.HealShip(player.Id, first.x, first.y);
+
+            if (healedCells.Count == 0)
+            {
+                // nieko neišgydė (laivas nenusautas, nuskendęs ar pan.) – nieko nesiunčiam
+                return;
+            }
+
+            // Paruošiam atsakymo payload – kuriuos langelius reikia atnaujinti klientams
+            var responsePayload = JsonSerializer.SerializeToElement(new
+            {
+                healedPlayerId = player.Id.ToString(),
+                cells = healedCells
+                    .Select(c => new { x = c.x, y = c.y })
+                    .ToArray()
+            });
+
+            var response = new MessageDto
+            {
+                Type = "healApplied",
+                Payload = responsePayload
+            };
+
+            // Išsiunčiam abiem žaidėjams – abu turi atsinaujinti lentas
+            await game.Player1.SendAsync(response);
+            await game.Player2.SendAsync(response);
+        }
 
         public void HandlePlayBot(GameManager manager, PlayerConnection player, MessageDto dto, Database db)
         {

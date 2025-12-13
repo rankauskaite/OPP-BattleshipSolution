@@ -11,6 +11,7 @@ using System.Net.WebSockets;
 using BattleshipServer.Builders;
 using BattleshipServer.Domain;
 using BattleshipServer.Visitor;
+using BattleshipServer.State;
 
 
 namespace BattleshipServer
@@ -83,6 +84,7 @@ namespace BattleshipServer
                 "shot" => new ShotMessage(dto),
                 "playBot" => new PlayBotMessage(dto),
                 "placeShield" => new PlaceShieldMessage(dto),
+                "healShip" => new HealShipMessage(dto),
                 _ => throw new ArgumentException($"Unknown message type: {dto.Type}"),
             };
         }

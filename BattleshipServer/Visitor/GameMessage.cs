@@ -117,4 +117,19 @@ namespace BattleshipServer.Visitor
             await visitor.VisitPlaceShieldAsync(this, player);
         }
     }
+
+    public class HealShipMessage : GameMessage
+    {
+        public MessageDto Dto { get; }
+
+        public HealShipMessage(MessageDto dto)
+        {
+            Dto = dto;
+        }
+
+        public async Task AcceptAsync(IGameMessageVisitor visitor, PlayerConnection player)
+        {
+            await visitor.VisitHealShipAsync(this, player);
+        }
+    }
 }

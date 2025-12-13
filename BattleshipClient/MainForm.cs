@@ -40,6 +40,7 @@ namespace BattleshipClient
         private Button btnToEnd;
         private Button btnPlus, btnX, btnSuper; 
         private Button btnShieldSafe, btnShieldInvisible, btnAreaShield;
+        private Button btnHeal;
 
 
         // Labels:
@@ -76,8 +77,9 @@ namespace BattleshipClient
         private bool placingHorizontal = true;  // drag & drop state
         private bool isReplayMode = false;
         private bool plusActive = false, xActive = false, superActive = false;
-        private int plusUsed = 0, xUsed = 0, superUsed = 0;
-        private const int MaxPlus = 1, MaxX = 1, MaxSuper = 1;
+        private bool healActive = false;
+        private int plusUsed = 0, xUsed = 0, superUsed = 0, healUsed = 0;
+        private const int MaxPlus = 1, MaxX = 1, MaxSuper = 1, MaxHeal = 1;
         public bool doubleBombActive = false;
         public int maxDoubleBombsCount = 0;
         public int doubleBombsUsed = 0;
@@ -156,12 +158,31 @@ namespace BattleshipClient
             btnPlus = new Button { Text = "+ Shot", Location = new Point(560, 100), Visible = false, Enabled = false, AutoSize = true };
             btnX = new Button { Text = "X Shot", Visible = false, Enabled = false, AutoSize = true };
             btnSuper = new Button { Text = "Super", Visible = false, Enabled = false, AutoSize = true };
+            btnHeal = new Button{Text = "Heal", Visible = false, Enabled = false, AutoSize = true};
 
             btnPlus.Click += (s, e) => { if (plusUsed >= MaxPlus) return; plusActive = !plusActive; btnPlus.BackColor = plusActive ? Color.LightGreen : SystemColors.Control; };
             btnX.Click += (s, e) => { if (xUsed >= MaxX) return; xActive = !xActive; btnX.BackColor = xActive ? Color.LightGreen : SystemColors.Control; };
             btnSuper.Click += (s, e) => { if (superUsed >= MaxSuper) return; superActive = !superActive; btnSuper.BackColor = superActive ? Color.LightGreen : SystemColors.Control; };
+            btnHeal.Click += (s, e) =>
+            {
+                if (healUsed >= MaxHeal) return;
 
-            this.Controls.AddRange(new Control[] { btnPlus, btnX, btnSuper }); 
+                // Įjungiam / išjungiam heal modus
+                healActive = !healActive;
+
+                // Jei įjungiam heal – išjungiam kitus power-up'us (kad vienu metu nebūtų du režimai)
+                if (healActive)
+                {
+                    plusActive = xActive = superActive = false;
+                    btnPlus.BackColor = SystemColors.Control;
+                    btnX.BackColor = SystemColors.Control;
+                    btnSuper.BackColor = SystemColors.Control;
+                }
+
+                btnHeal.BackColor = healActive ? Color.LightGreen : SystemColors.Control;
+            };
+
+            this.Controls.AddRange(new Control[] { btnPlus, btnX, btnSuper, btnHeal }); 
 
             btnShieldSafe = new Button { Text = "Shield (Safe)", Visible = false, Enabled = false, AutoSize = true };
             btnShieldInvisible = new Button { Text = "Shield (Invisible)", Visible = false, Enabled = false, AutoSize = true }; 
@@ -302,6 +323,7 @@ namespace BattleshipClient
             topBar.Controls.Add(btnPlus);
             topBar.Controls.Add(btnX);
             topBar.Controls.Add(btnSuper);
+            topBar.Controls.Add(btnHeal);
             topBar.Controls.Add(btnDoubleBombPowerUp); 
             topBar.Controls.Add(btnShieldSafe);
             topBar.Controls.Add(btnShieldInvisible); 
@@ -403,6 +425,8 @@ namespace BattleshipClient
 
         private void OwnBoard_CellClickedForRemoval(object sender, Point p)
         {
+            if (!placingShips) return;
+
             (bool successful_removal, int len) = this.ShipPlacementService.RemoveShip(this.myShips, this.ownBoard, this.shipPanel, p);
             if (successful_removal && len >= 0)
             {
@@ -533,7 +557,8 @@ namespace BattleshipClient
             btnSuper.Text = "Super"; btnSuper.BackColor = SystemColors.Control;
 
             powerUpsShown = true;                  // Žaidimas prasidėjo – rodom
-            SyncPowerUpsUI(); 
+            SyncPowerUpsUI();
+            placingShips = false;
             this.ownBoard.CellClicked -= OwnBoard_CellClickedForRemoval;
             this.ownBoard.CellClicked += OwnBoard_CellClickedForShield;
 
@@ -596,6 +621,9 @@ namespace BattleshipClient
 
             powerUpsShown = true;
             SyncPowerUpsUI();
+            placingShips = false;
+            this.ownBoard.CellClicked -= OwnBoard_CellClickedForRemoval;
+            this.ownBoard.CellClicked += OwnBoard_CellClickedForShield;
         }
 
         private void Net_OnMessageReceived(MessageDto dto)
@@ -611,11 +639,12 @@ namespace BattleshipClient
             this.MessageService.HandleMessage(dto, this);
         }
 
-        private void SyncPowerUpsUI()
+        void SyncPowerUpsUI()
         {
             btnPlus.Visible = powerUpsShown;
             btnX.Visible = powerUpsShown;
             btnSuper.Visible = powerUpsShown;
+            btnHeal.Visible = powerUpsShown;                 // NEW
             btnShieldSafe.Visible = powerUpsShown;
             btnShieldInvisible.Visible = powerUpsShown;
             btnAreaShield.Visible = powerUpsShown;
@@ -623,16 +652,13 @@ namespace BattleshipClient
             btnPlus.Enabled = powerUpsShown && (plusUsed < MaxPlus);
             btnX.Enabled = powerUpsShown && (xUsed < MaxX);
             btnSuper.Enabled = powerUpsShown && (superUsed < MaxSuper);
+            btnHeal.Enabled = powerUpsShown && (healUsed < MaxHeal); // NEW
 
             btnShieldSafe.Enabled = powerUpsShown && (safeShieldsUsed < MaxSafeShields);
             btnShieldInvisible.Enabled = powerUpsShown && (invisibleShieldsUsed < MaxInvisibleShields);
-
             btnAreaShield.Enabled = powerUpsShown
-                                    && (shieldSafeActive || shieldInvisibleActive)
-                                    && (safeShieldsUsed < MaxSafeShields || invisibleShieldsUsed < MaxInvisibleShields);
+                && (safeShieldsUsed < MaxSafeShields || invisibleShieldsUsed < MaxInvisibleShields);
         }
-
-
 
 
         private async void BtnGameOver_Click(object sender, EventArgs e)
@@ -660,15 +686,106 @@ namespace BattleshipClient
             }
 
             btnGameOver.Visible = false;
-        } 
+        }
 
-        private async void OwnBoard_CellClickedForShield(object sender, Point p)
+        async void OwnBoard_CellClickedForShield(object sender, Point p)
         {
             if (!powerUpsShown) return;
+
+            // 1) Heal režimas – prioritetinis
+            if (healActive)
+            {
+                // Surandam laivą, kuriam priklauso paspaustas langelis
+                var shipToHeal = myShips.FirstOrDefault(s =>
+                {
+                    bool horizontal = s.dir == "H";
+                    if (horizontal)
+                    {
+                        return p.Y == s.y && p.X >= s.x && p.X < s.x + s.len;
+                    }
+                    else
+                    {
+                        return p.X == s.x && p.Y >= s.y && p.Y < s.y + s.len;
+                    }
+                });
+
+                if (shipToHeal == null)
+                {
+                    lblStatus.Text = "Čia nėra tavo laivo – negaliu gydyti.";
+                    return;
+                }
+
+                // Patikrinam visus to laivo langelius
+                bool hasHit = false;
+                bool hasIntact = false;
+                var shipCells = new List<Point>();
+
+                for (int i = 0; i < shipToHeal.len; i++)
+                {
+                    int cx = shipToHeal.dir == "H" ? shipToHeal.x + i : shipToHeal.x;
+                    int cy = shipToHeal.dir == "H" ? shipToHeal.y : shipToHeal.y + i;
+
+                    shipCells.Add(new Point(cx, cy));
+
+                    var state = ownBoard.GetCell(cx, cy);
+                    if (state == CellState.Hit) hasHit = true;
+                    if (state == CellState.Ship) hasIntact = true;
+                }
+
+                if (!hasHit)
+                {
+                    lblStatus.Text = "Šis laivas dar nepažeistas – nėra ką gydyti.";
+                    return;
+                }
+
+                if (!hasIntact)
+                {
+                    lblStatus.Text = "Laivas jau nuskandintas – jo gydyti nebegalima.";
+                    return;
+                }
+
+                // Išsiunčiam žinutę serveriui (čia gali pasinaudoti fullShip serverio pusėje)
+                var healMsg = new
+                {
+                    type = "healShip",
+                    payload = new
+                    {
+                        cells = shipCells
+                                .Select(c => new { x = c.X, y = c.Y })
+                                .ToArray()
+                                        }
+                };
+                await net.SendAsync(healMsg);
+
+                // Lokaliai atstatom VISĄ laivą (visus Hit -> Ship)
+                foreach (var cell in shipCells)
+                {
+                    if (ownBoard.GetCell(cell.X, cell.Y) == CellState.Hit)
+                        ownBoard.SetCell(cell.X, cell.Y, CellState.Ship);
+                }
+                ownBoard.Invalidate();
+
+                // Po siuntimo išjungiam heal ir pažymim, kad panaudotas
+                
+                healActive = false;
+                healUsed++;
+                btnHeal.BackColor = SystemColors.Control;
+                if (healUsed >= MaxHeal)
+                {
+                    btnHeal.Enabled = false;
+                    btnHeal.Text = "Heal used";
+                }
+
+                SyncPowerUpsUI();
+                UpdatePowerUpLabel();
+                return; // nebededam shield, jei gydėm visą laivą
+            }
+
+            // 2) Jei heal neaktyvus – elgiamės kaip seniau su shield
             if (!(shieldSafeActive || shieldInvisibleActive)) return;
 
             string mode = shieldSafeActive ? "safetiness" : "visibility";
-            bool isArea = areaShieldActive;   // jeigu įjungtas Area mygtukas – siųsim zoną
+            bool isArea = areaShieldActive;   // jeigu Area mygtukas – siųsim zoną
 
             var msg = new
             {
@@ -677,8 +794,8 @@ namespace BattleshipClient
                 {
                     x = p.X,
                     y = p.Y,
-                    mode = mode,
-                    isArea = isArea   // NAUJAS LAUKAS
+                    placeShield = mode,
+                    isArea = isArea
                 }
             };
 
@@ -713,7 +830,6 @@ namespace BattleshipClient
 
             SyncPowerUpsUI();
         }
-
 
 
         public void BtnDoubleBombPowerUp_Click(object sender, EventArgs e)
@@ -782,9 +898,12 @@ namespace BattleshipClient
             this.Controls.Add(enemyBoard);
         }
 
-        private void UpdatePowerUpLabel()
+        void UpdatePowerUpLabel()
         {
-            this.lblPowerUpInfo.Text = $"PowerUp info:\nDouble bombs: x {this.maxDoubleBombsCount - this.doubleBombsUsed}";
+            lblPowerUpInfo.Text =
+                "PowerUp info:\n" +
+                $"- Double bombs: {maxDoubleBombsCount - doubleBombsUsed}\n" +
+                $"- Heal: {MaxHeal - healUsed}";
         }
 
         public int GetShipCount()

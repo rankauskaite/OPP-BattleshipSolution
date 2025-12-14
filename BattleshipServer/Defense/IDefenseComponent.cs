@@ -10,19 +10,9 @@ namespace BattleshipServer.Defense
         Visibility = 2
     }
 
-    /// <summary>
-    /// GoF Composite: Component
-    ///
-    /// UML "Operation()" tavo domeine yra "GetMode(x,y)".
-    /// Kad UML atitiktų skaidrę, Component taip pat deklaruoja Add/Remove/GetChild.
-    /// Leaf šiuos metodus laiko nepalaikomais (NotSupportedException).
-    /// </summary>
     public interface IDefenseComponent
     {
-        // Operation(x,y)
         DefenseMode GetMode(int x, int y);
-
-        // Composite operations
         void Add(IDefenseComponent item);
         void Remove(IDefenseComponent item);
         IDefenseComponent GetChild(int index);

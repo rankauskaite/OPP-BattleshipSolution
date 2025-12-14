@@ -1,146 +1,24 @@
 ==== Naujas žaidimas ====
-22:44:15 - Player nepataikė
-22:44:17 - Player nepataikė
-22:44:17 - Player nepataikė
-22:44:21 - Player pataikė
-22:44:22 - Player pataikė
-22:44:22 - Player pataikė
-22:44:22 - Player pataikė
-22:44:27 - Player pataikė
-22:44:27 - Player pataikė
-22:44:27 - Player pataikė
-22:44:27 - Player pataikė
-22:44:28 - Player pataikė
-22:44:28 - Player pataikė
-22:44:29 - Player nuskandino laivą
-22:44:29 - Player nuskandino laivą
-22:44:29 - Player nuskandino laivą
-22:44:29 - Player nuskandino laivą
-22:44:29 - Player nuskandino laivą
-22:44:29 - Player nuskandino laivą
-22:44:29 - Player nuskandino laivą
-22:44:29 - Player nuskandino laivą
-22:44:29 - Player nuskandino laivą
-22:44:29 - Player nuskandino laivą
-22:44:47 - Player nepataikė
-22:44:47 - Player nepataikė
-22:44:48 - Player nepataikė
-22:44:48 - Player nepataikė
-22:44:50 - Player nepataikė
-22:44:50 - Player nepataikė
-22:44:51 - Player nepataikė
-22:44:51 - Player nepataikė
-22:44:52 - Player nepataikė
-22:44:52 - Player nepataikė
-22:44:53 - Player nepataikė
-22:44:53 - Player nepataikė
-22:44:54 - Player nepataikė
-22:44:54 - Player nepataikė
-22:44:55 - Player nepataikė
-22:44:55 - Player nepataikė
-22:44:56 - Player nepataikė
-22:44:56 - Player nepataikė
-22:44:58 - Player nepataikė
-22:44:58 - Player nepataikė
-22:44:59 - Player pataikė
-22:44:59 - Player pataikė
-22:45:01 - Player nepataikė
-22:45:01 - Player nepataikė
-22:45:02 - Player nepataikė
-22:45:02 - Player nepataikė
-22:45:03 - Player nepataikė
-22:45:04 - Player nepataikė
-22:45:06 - Player nepataikė
-22:45:06 - Player nepataikė
-22:45:07 - Player nepataikė
-22:45:07 - Player nepataikė
-22:45:08 - Player pataikė
-22:45:08 - Player pataikė
-22:45:10 - Player pataikė
-22:45:10 - Player pataikė
-22:45:11 - Player nuskandino laivą
-22:45:11 - Player nuskandino laivą
-22:45:11 - Player nuskandino laivą
-22:45:11 - Player nuskandino laivą
-22:45:11 - Player nuskandino laivą
-22:45:11 - Player nuskandino laivą
-22:45:12 - Player pataikė
-22:45:12 - Player pataikė
-22:45:12 - Player pataikė
-22:45:12 - Player pataikė
-22:45:15 - Player nuskandino laivą
-22:45:15 - Player nuskandino laivą
-22:45:16 - Player nuskandino laivą
-22:45:16 - Player nuskandino laivą
-22:45:16 - Player nuskandino laivą
-22:45:16 - Player nuskandino laivą
-22:45:17 - Player pataikė
-22:45:18 - Player pataikė
-22:45:18 - Player nepataikė
-22:45:18 - Player nepataikė
-22:45:20 - Player nepataikė
-22:45:21 - Player nepataikė
-22:45:24 - Player nuskandino laivą
-22:45:24 - Player nuskandino laivą
-22:45:24 - Player nuskandino laivą
-22:45:24 - Player nuskandino laivą
-22:45:26 - Player nepataikė
-22:45:26 - Player nepataikė
-22:45:27 - Player nepataikė
-22:45:27 - Player nepataikė
-22:45:28 - Player nuskandino laivą
-22:45:28 - Player nuskandino laivą
-22:45:28 - Player nuskandino laivą
-22:45:28 - Player nuskandino laivą
-22:45:28 - Player nuskandino laivą
-22:45:28 - Player nuskandino laivą
-22:45:28 - Player nuskandino laivą
-22:45:28 - Player nuskandino laivą
-22:45:28 - Player nuskandino laivą
-22:45:28 - Player nuskandino laivą
-22:45:31 - Player nuskandino laivą
-22:45:31 - Player nuskandino laivą
-22:45:31 - Player nuskandino laivą
-22:45:31 - Player nuskandino laivą
-22:45:32 - Player nuskandino laivą
-22:45:32 - Player nuskandino laivą
-22:45:32 - Player nuskandino laivą
-22:45:32 - Player nuskandino laivą
-22:45:34 - Player pataikė
-22:45:34 - Player pataikė
-22:45:34 - Player pataikė
-22:45:34 - Player pataikė
-22:45:34 - Player nuskandino laivą
-22:45:34 - Player nuskandino laivą
-22:45:34 - Player nuskandino laivą
-22:45:34 - Player nuskandino laivą
-22:45:34 - Player nuskandino laivą
-22:45:34 - Player nuskandino laivą
-22:45:34 - Player nuskandino laivą
-22:45:34 - Player nuskandino laivą
-22:45:38 - Player pataikė
-22:45:38 - Player pataikė
-22:45:39 - Player pataikė
-22:45:39 - Player pataikė
-22:45:41 - Player nuskandino laivą
-22:45:41 - Player nuskandino laivą
-22:45:41 - Player nuskandino laivą
-22:45:41 - Player nuskandino laivą
-22:45:41 - Player nuskandino laivą
-22:45:41 - Player nuskandino laivą
-22:45:41 - Player nuskandino laivą
-22:45:41 - Player nuskandino laivą
-22:45:41 - Player pataikė
-22:45:42 - Player pataikė
-22:45:42 - Player nuskandino laivą
-22:45:42 - Player nuskandino laivą
-22:45:42 - Player nuskandino laivą
-22:45:42 - Player nuskandino laivą
-22:45:42 - Player nuskandino laivą
-22:45:42 - Player nuskandino laivą
-22:45:43 - Player nuskandino laivą
-22:45:43 - Player nuskandino laivą
-22:45:43 - Player nuskandino laivą
-22:45:43 - Player nuskandino laivą
-22:45:45 - Player pralaimėjo žaidimą
-22:45:46 - Player laimėjo žaidimą
+21:07:31 - Player nepataikė
+21:07:55 - Player nepataikė
+21:07:55 - Player nepataikė
+21:07:55 - Player pataikė
+21:07:55 - Player pataikė
+21:07:55 - Player nepataikė
+21:07:55 - Player nepataikė
+21:07:55 - Player pataikė
+21:07:55 - Player pataikė
+21:07:55 - Player pataikė
+21:07:55 - Player pataikė
+21:08:19 - Player pataikė
+21:08:19 - Player pataikė
+21:08:19 - Player nuskandino laivą
+21:08:19 - Player nuskandino laivą
+21:08:19 - Player nuskandino laivą
+21:08:19 - Player nuskandino laivą
+21:08:19 - Player nuskandino laivą
+21:08:19 - Player nuskandino laivą
+21:08:19 - Player nuskandino laivą
+21:08:19 - Player nuskandino laivą
+21:08:35 - Player nepataikė
+21:08:35 - Player nepataikė

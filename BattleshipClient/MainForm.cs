@@ -1269,10 +1269,10 @@ namespace BattleshipClient
                     if (string.IsNullOrWhiteSpace(line))
                         continue;
 
-                    if (line.Equals("exit", StringComparison.OrdinalIgnoreCase))
+                    // Leidžiam interpreter'iui apdoroti "exit" ir mišrias komandas, pvz. "shoot B5; exit".
+                    var shouldExit = interpreter.Interpret(line, this);
+                    if (shouldExit)
                         break;
-
-                    interpreter.Interpret(line, this);
                 }
 
                 Console.WriteLine("Konsolės režimas baigtas.");

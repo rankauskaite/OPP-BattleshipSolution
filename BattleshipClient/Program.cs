@@ -1,3 +1,5 @@
+using BattleshipClient.Flyweight;
+using BenchmarkDotNet.Running;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -28,6 +30,8 @@ namespace BattleshipClient
             INetworkClient client = useProxy
                 ? new NetworkClientProxy(factory, "localhost")
                 : factory();
+
+            BenchmarkRunner.Run<FlyweightBenchmark>();
 
             Application.Run(new MainForm(client));
         }

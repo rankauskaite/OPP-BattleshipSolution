@@ -1,40 +1,31 @@
 using System;
-using System.Collections.Generic;
 
 namespace BattleshipClient.ConsoleInterpreter
 {
     // NonTerminal: programa = daug komandų
-    public sealed class ProgramNonTerminalExpression : IExpression
+    public sealed class ProgramNonTerminalExpression : NonTerminalExpression
     {
-        private readonly List<IExpression> _children = new();
+        public void Add(IExpression expr) => AddToList(expr);
 
-        public void Add(IExpression expr)
+        public override void Execute(ConsoleContext ctx)
         {
-            if (expr == null) throw new ArgumentNullException(nameof(expr));
-            _children.Add(expr);
-        }
-
-        public void Interpret(ConsoleContext ctx)
-        {
-            foreach (var child in _children)
+            foreach (var child in list)
             {
                 try
                 {
-                    child.Interpret(ctx);
+                    child.Execute(ctx);
                 }
                 catch (Exception ex)
                 {
-                    // Nesustabdom visos programos dėl vienos blogos komandos – tai patogiau konsolėje.
                     ctx.Output($"[Interpreter] {ex.Message}");
                 }
-
                 if (ctx.ShouldExit) return;
             }
         }
     }
 
     // NonTerminal: šūvis = (veiksmas + koordinatės)
-    public sealed class ShotNonTerminalExpression : IExpression
+    public sealed class ShotNonTerminalExpression : NonTerminalExpression
     {
         private readonly IExpression _verb;
         private readonly IExpression _coord;
@@ -43,12 +34,16 @@ namespace BattleshipClient.ConsoleInterpreter
         {
             _verb = verb ?? throw new ArgumentNullException(nameof(verb));
             _coord = coord ?? throw new ArgumentNullException(nameof(coord));
+
+            // laikom kaip AST vaikus (kad UML sutaptų su skaidrėmis)
+            AddToList(_verb);
+            AddToList(_coord);
         }
 
-        public void Interpret(ConsoleContext ctx)
+        public override void Execute(ConsoleContext ctx)
         {
-            _verb.Interpret(ctx);
-            _coord.Interpret(ctx);
+            _verb.Execute(ctx);
+            _coord.Execute(ctx);
 
             // vykdymas UI gijoje
             ctx.Ui(() => ctx.Form.FireShotFromConsole(ctx.X, ctx.Y, ctx.UsePlus, ctx.UseX, ctx.UseSuper));

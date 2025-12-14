@@ -4,23 +4,14 @@ namespace BattleshipClient.ConsoleInterpreter
 {
     public sealed class CommandInterpreter
     {
-        /// <summary>
-        /// Interpretuoja vieną įvesties eilutę.
-        /// Grąžina true, jei interpretavimo metu buvo paprašyta išeiti (exit).
-        /// </summary>
         public bool Interpret(string line, BattleshipClient.MainForm form)
         {
             var ctx = new ConsoleContext(line, form);
             var program = BuildAst(ctx);
 
-            try
-            {
-                program.Interpret(ctx);
-            }
-            catch (Exception ex)
-            {
-                ctx.Output($"[Interpreter] {ex.Message}");
-            }
+
+            try { program.Execute(ctx); }
+            catch (Exception ex) { ctx.Output($"[Interpreter] {ex.Message}"); }
 
             return ctx.ShouldExit;
         }
@@ -28,12 +19,6 @@ namespace BattleshipClient.ConsoleInterpreter
         private static ProgramNonTerminalExpression BuildAst(ConsoleContext ctx)
         {
             var program = new ProgramNonTerminalExpression();
-
-            static bool IsCommandWord(string token)
-            {
-                token = token.ToLowerInvariant();
-                return token is ";" or "help" or "?" or "undo" or "redo" or "exit" or "shoot" or "plus" or "x" or "super";
-            }
 
             int i = 0;
             while (i < ctx.Tokens.Count)
@@ -70,28 +55,16 @@ namespace BattleshipClient.ConsoleInterpreter
                     continue;
                 }
 
-                // Grammar: <verb> <coord>
                 if (t is "shoot" or "plus" or "x" or "super")
                 {
                     if (i + 1 >= ctx.Tokens.Count)
                     {
                         program.Add(new UnknownTerminalExpression("Trūksta koordinačių (pvz. shoot B5)."));
-                        i++;
-                        continue;
-                    }
-
-                    // Pvz. "shoot ; undo" arba "shoot exit" – laikom, kad trūksta koordinačių,
-                    // bet tęsiam interpretavimą toliau.
-                    var next = ctx.Tokens[i + 1];
-                    if (IsCommandWord(next))
-                    {
-                        program.Add(new UnknownTerminalExpression("Trūksta koordinačių (pvz. shoot B5)."));
-                        i++;
-                        continue;
+                        break;
                     }
 
                     var verb = new VerbTerminalExpression(ctx.Tokens[i]);
-                    var coord = new CoordinateTerminalExpression(next);
+                    var coord = new CoordinateTerminalExpression(ctx.Tokens[i + 1]);
                     program.Add(new ShotNonTerminalExpression(verb, coord));
                     i += 2;
                     continue;

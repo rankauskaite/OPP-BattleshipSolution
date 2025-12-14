@@ -9,9 +9,11 @@ namespace BattleshipClient.ConsoleInterpreter
         public BattleshipClient.MainForm Form { get; }
         public string Input { get; }
         public IReadOnlyList<string> Tokens { get; }
+
+        public string output { get; private set; } = "";
+
         public Action<string> Output { get; }
 
-        // rezultatai po interpretavimo
         public int X { get; set; } = -1;
         public int Y { get; set; } = -1;
         public bool UsePlus { get; set; }
@@ -23,9 +25,14 @@ namespace BattleshipClient.ConsoleInterpreter
         {
             Input = input ?? "";
             Form = form ?? throw new ArgumentNullException(nameof(form));
-            Output = output ?? Console.WriteLine;
+            var sink = output ?? Console.WriteLine;
+            Output = msg =>
+            {
+                this.output += msg + Environment.NewLine;
+                sink(msg);
+            };
 
-            // leidžiam "plus B5; undo"
+   
             var norm = Input.Replace(";", " ; ");
             Tokens = norm.Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
                          .Select(t => t.Trim())

@@ -3,12 +3,12 @@ using System;
 namespace BattleshipClient.ConsoleInterpreter
 {
     // Terminal: veiksmo žodis (shoot/plus/x/super)
-    public sealed class VerbTerminalExpression : IExpression
+    public sealed class VerbTerminalExpression : TerminalExpression
     {
         private readonly string _verb;
         public VerbTerminalExpression(string verb) => _verb = verb ?? "";
 
-        public void Interpret(ConsoleContext ctx)
+        public override void Execute(ConsoleContext ctx)
         {
             var v = _verb.Trim().ToLowerInvariant();
 
@@ -26,12 +26,12 @@ namespace BattleshipClient.ConsoleInterpreter
     }
 
     // Terminal: koordinatės (B5, J10...)
-    public sealed class CoordinateTerminalExpression : IExpression
+    public sealed class CoordinateTerminalExpression : TerminalExpression
     {
         private readonly string _token;
         public CoordinateTerminalExpression(string token) => _token = token ?? "";
 
-        public void Interpret(ConsoleContext ctx)
+        public override void Execute(ConsoleContext ctx)
         {
             if (!TryParse(_token, out var x, out var y))
                 throw new ArgumentException($"Blogos koordinatės: {_token} (pvz. B5, J10)");
@@ -58,9 +58,9 @@ namespace BattleshipClient.ConsoleInterpreter
         }
     }
 
-    public sealed class HelpTerminalExpression : IExpression
+    public sealed class HelpTerminalExpression : TerminalExpression
     {
-        public void Interpret(ConsoleContext ctx)
+        public override void Execute(ConsoleContext ctx)
         {
             ctx.Output("Komandos:");
             ctx.Output("  shoot B5");
@@ -74,9 +74,9 @@ namespace BattleshipClient.ConsoleInterpreter
         }
     }
 
-    public sealed class UndoTerminalExpression : IExpression
+    public sealed class UndoTerminalExpression : TerminalExpression
     {
-        public void Interpret(ConsoleContext ctx)
+        public override void Execute(ConsoleContext ctx)
         {
             ctx.Ui(() =>
             {
@@ -86,9 +86,9 @@ namespace BattleshipClient.ConsoleInterpreter
         }
     }
 
-    public sealed class RedoTerminalExpression : IExpression
+    public sealed class RedoTerminalExpression : TerminalExpression
     {
-        public void Interpret(ConsoleContext ctx)
+        public override void Execute(ConsoleContext ctx)
         {
             ctx.Ui(() =>
             {
@@ -98,15 +98,15 @@ namespace BattleshipClient.ConsoleInterpreter
         }
     }
 
-    public sealed class ExitTerminalExpression : IExpression
+    public sealed class ExitTerminalExpression : TerminalExpression
     {
-        public void Interpret(ConsoleContext ctx) => ctx.ShouldExit = true;
+        public override void Execute(ConsoleContext ctx) => ctx.ShouldExit = true;
     }
 
-    public sealed class UnknownTerminalExpression : IExpression
+    public sealed class UnknownTerminalExpression : TerminalExpression
     {
         private readonly string _msg;
         public UnknownTerminalExpression(string msg) => _msg = msg;
-        public void Interpret(ConsoleContext ctx) => ctx.Output($"[Interpreter] {_msg}");
+        public override void Execute(ConsoleContext ctx) => ctx.Output($"[Interpreter] {_msg}");
     }
 }

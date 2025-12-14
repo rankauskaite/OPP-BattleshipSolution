@@ -109,7 +109,11 @@ namespace BattleshipClient
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
-            var g = e.Graphics;
+            DrawBoard(e.Graphics);
+        }
+
+        public void DrawBoard(Graphics g)
+        {
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.PixelOffsetMode = PixelOffsetMode.Half;
 
@@ -161,7 +165,6 @@ namespace BattleshipClient
                 g.DrawRectangle(pen, x, y, w, h);
             }
 
-            // --- Papildomas piešimas į konsolę ---
             if (Style == BoardStyle.Console)
             {
                 try
@@ -172,6 +175,149 @@ namespace BattleshipClient
                 catch { }
             }
         }
+
+        // START: Palikta dėl testų, skirtų flyweight palyginimui
+        public void OldDrawBoard(Graphics g)
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.PixelOffsetMode = PixelOffsetMode.Half;
+
+            g.Clear(GetBackgroundColor());
+
+            using var font = new Font("Arial", 10, FontStyle.Bold);
+            using var brush = new SolidBrush(Color.Black);
+            var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+
+            // Raidės 
+            for (int c = 0; c < Size; c++)
+            {
+                string letter = ((char)('A' + c)).ToString();
+                var rect = new Rectangle(LabelMargin + c * CellPx, 0, CellPx, LabelMargin);
+                g.DrawString(letter, font, brush, rect, sf);
+            }
+
+            // Skaičiai 
+            for (int r = 0; r < Size; r++)
+            {
+                string number = (r + 1).ToString();
+                var rect = new Rectangle(0, LabelMargin + r * CellPx, LabelMargin, CellPx);
+                g.DrawString(number, font, brush, rect, sf);
+            }
+
+            // Langeliai 
+            for (int r = 0; r < Size; r++)
+            {
+                for (int c = 0; c < Size; c++)
+                {
+                    var rect = CellRectPx(c, r);
+                    using (var b = new SolidBrush(GetCellColor(Cells[r, c])))
+                        g.FillRectangle(b, rect);
+
+                    g.DrawRectangle(GetGridPen(), rect);
+                }
+            }
+
+            if (ShowSunkOutlines) DrawSunkShipPerimeter(g);
+
+            using var pen = new Pen(Color.Black, 3);
+            foreach (var ship in Ships)
+            {
+                int x = LabelMargin + ship.x * CellPx;
+                int y = LabelMargin + ship.y * CellPx;
+                int w = (ship.dir == "H" ? ship.len : 1) * CellPx;
+                int h = (ship.dir == "V" ? ship.len : 1) * CellPx;
+                g.DrawRectangle(pen, x, y, w, h);
+            }
+
+            // --- Papildomas piešimas į konsolę --- 
+            if (Style == BoardStyle.Console)
+            {
+                try
+                {
+                    if (_consoleView == null) _consoleView = new ConsoleBoardView();
+                    _consoleView.DrawBoard(this);
+                }
+                catch { }
+            }
+        }
+        private Color GetBackgroundColor()
+        {
+            return Style switch
+            {
+                BoardStyle.Retro => Color.FromArgb(245, 245, 235),
+                BoardStyle.PowerUp => Color.FromArgb(245, 250, 245),
+                BoardStyle.Colorful => Color.FromArgb(240, 245, 255),
+                _ => ColorTranslator.FromHtml("#f8f9fa"),
+            };
+        }
+
+        private Pen GetGridPen()
+        {
+            return Style switch
+            {
+                BoardStyle.Retro => Pens.DimGray,
+                BoardStyle.PowerUp => Pens.Black,
+                BoardStyle.Colorful => new Pen(Color.FromArgb(70, 70, 120)),
+                _ => Pens.Black,
+            };
+        }
+
+        private Color GetCellColor(CellState state)
+        {
+            return Style switch
+            {
+                BoardStyle.Retro => GetRetroColor(state),
+                BoardStyle.PowerUp => GetPowerUpColor(state),
+                BoardStyle.Colorful => GetColorfulColor(state),
+                _ => GetClassicColor(state),
+            };
+        }
+
+        // --- Classic (default) --- 
+        private Color GetClassicColor(CellState s) => s switch
+        {
+            CellState.Empty => ColorTranslator.FromHtml("#dbe9f7"),
+            CellState.Ship => ColorTranslator.FromHtml("#6c757d"),
+            CellState.Hit => ColorTranslator.FromHtml("#dc3545"),
+            CellState.Miss => ColorTranslator.FromHtml("#ffffff"),
+            CellState.Whole_ship_down => ColorTranslator.FromHtml("#781D26"),
+            _ => ColorTranslator.FromHtml("#dbe9f7"),
+        };
+
+        // --- Retro --- 
+        private Color GetRetroColor(CellState s) => s switch
+        {
+            CellState.Empty => Color.FromArgb(210, 230, 240),
+            CellState.Ship => Color.FromArgb(120, 120, 130),
+            CellState.Hit => Color.FromArgb(230, 90, 70),
+            CellState.Miss => Color.FromArgb(255, 255, 250),
+            CellState.Whole_ship_down => Color.FromArgb(100, 40, 50),
+            _ => Color.FromArgb(210, 230, 240),
+        };
+
+        // --- PowerUp --- 
+        private Color GetPowerUpColor(CellState s) => s switch
+        {
+            CellState.Empty => Color.FromArgb(215, 235, 215),
+            CellState.Ship => Color.FromArgb(40, 160, 80),
+            CellState.Hit => Color.FromArgb(230, 50, 50),
+            CellState.Miss => Color.FromArgb(255, 255, 255),
+            CellState.Whole_ship_down => Color.FromArgb(100, 20, 30),
+            _ => Color.FromArgb(215, 235, 215),
+        };
+
+        // --- Colorful --- 
+        private Color GetColorfulColor(CellState s) => s switch
+        {
+            CellState.Empty => Color.FromArgb(180, 215, 255),
+            CellState.Ship => Color.FromArgb(120, 70, 200),
+            CellState.Hit => Color.FromArgb(255, 50, 90),
+            CellState.Miss => Color.FromArgb(255, 250, 190),
+            CellState.Whole_ship_down => Color.FromArgb(100, 40, 130),
+            _ => Color.FromArgb(180, 215, 255),
+        };
+
+        // END: Palikta dėl testų, skirtų flyweight palyginimui
 
         protected override void OnMouseClick(MouseEventArgs e)
         {

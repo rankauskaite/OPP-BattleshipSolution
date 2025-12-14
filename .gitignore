@@ -38,3 +38,9 @@ BattleshipClient/bin/Debug/net8.0-windows/
 /.vs/OPP-BattleshipSolution/FileContentIndex
 
 BattleshipClient/game_log*
+
+BattleshipClient/BenchmarkDotNet.Artifacts/
+
+BattleshipClient/bin/Release/net8.0-windows/
+
+BattleshipServer/bin/Release/net8.0/

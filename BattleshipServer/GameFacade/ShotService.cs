@@ -7,9 +7,9 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using static BattleshipServer.Game; 
+using static BattleshipServer.Game;
 using BattleshipServer.Defense;
-
+using BattleshipServer.Iterators;
 
 namespace BattleshipServer.GameFacade
 {
@@ -17,8 +17,8 @@ namespace BattleshipServer.GameFacade
     {
         private readonly PlayerService playerService;
         private readonly SendMessageService messageService;
-        public bool lastShootHit { get; private set; } = false; 
-        public bool lastShotWasShield { get; private set; } = false;  
+        public bool lastShootHit { get; private set; } = false;
+        public bool lastShotWasShield { get; private set; } = false;
 
         public bool gameOver { get; set; } = false;
 
@@ -87,13 +87,13 @@ namespace BattleshipServer.GameFacade
         }
 
         public async void ProcessCompositeShot(
-          Game game,
-          Guid shooterId,
-          Shot origin,
-          bool isDoubleBomb,
-          bool plusShape,
-          bool xShape,
-          bool superDamage)
+            Game game,
+            Guid shooterId,
+            Shot origin,
+            bool isDoubleBomb,
+            bool plusShape,
+            bool xShape,
+            bool superDamage)
         {
             // jeigu jokių dekoratorių – naudok paprastą šūvį
             if (!plusShape && !xShape && !superDamage)
@@ -106,13 +106,8 @@ namespace BattleshipServer.GameFacade
             var target = playerService.GetOpponent(shooterId, game);
             (int[,] board, List<Game.Ship> ships) = playerService.GetTargetBoardAndShips(target, game);
 
-            // --- dekoratorių medis (KOMPONENTAS + WRAPPERIAI) ---
-            IShotPattern patt = new SingleCellPattern();
-            if (plusShape) patt = new PlusPatternDecorator(patt);
-            if (xShape) patt = new XPatternDecorator(patt);
-
-            // čia gaunam IŠ DEKORATORIAUS → OBJEKTUS (Shot)
-            var shots = patt.GetShots(origin, 10, 10).Distinct().ToList();
+            int w = board.GetLength(1);
+            int h = board.GetLength(0);
 
             IShotEffect effect = new NoopEffect();
             if (superDamage) effect = new SuperDamageDecorator(effect);
@@ -120,43 +115,105 @@ namespace BattleshipServer.GameFacade
             lastShootHit = false;
             var sunkThisTurn = new HashSet<Game.Ship>();
 
-            foreach (var shot in shots)
+            // ====== X power-up: ITERATOR PATTERN (ciklas per custom iteratorių) ======
+            // jei nori, kad veiktų ir combo X+Plus — nuimk "!plusShape"
+            if (xShape && !plusShape)
             {
-                var (success, hit) = await ProcessShot(shot.X, shot.Y, board, shooterId, game);
-                if (!success) continue;
+                var hitCoords = new List<Shot>();
 
-                await messageService.SendShotInfo(game.Player1, game.Player2, shooterId, target,
-                                                shot.X, shot.Y, hit);
-
-                if (hit)
+                var it = new XShotTargets(origin, w, h).GetIterator();
+                while (it.MoveNext())
                 {
-                    lastShootHit = true;
+                    var shot = it.Current;
 
-                    _ = effect.AfterCellHit(shot, board, ships);
+                    var (success, hit) = await ProcessShot(shot.X, shot.Y, board, shooterId, game);
+                    if (!success) continue;
 
-                    var hitShip = ships.FirstOrDefault(s =>
-                        (s.Horizontal && shot.Y == s.Y && shot.X >= s.X && shot.X < s.X + s.Len) ||
-                        (!s.Horizontal && shot.X == s.X && shot.Y >= s.Y && shot.Y < s.Y + s.Len));
+                    await messageService.SendShotInfo(game.Player1, game.Player2, shooterId, target,
+                                                    shot.X, shot.Y, hit);
 
-                    if (hitShip != null && !sunkThisTurn.Contains(hitShip) && hitShip.IsSunk(board))
+                    if (hit)
                     {
-                        sunkThisTurn.Add(hitShip);
-                        for (int i = 0; i < hitShip.Len; i++)
+                        lastShootHit = true;
+                        hitCoords.Add(shot);
+
+                        _ = effect.AfterCellHit(shot, board, ships);
+
+                        var hitShip = ships.FirstOrDefault(s =>
+                            (s.Horizontal && shot.Y == s.Y && shot.X >= s.X && shot.X < s.X + s.Len) ||
+                            (!s.Horizontal && shot.X == s.X && shot.Y >= s.Y && shot.Y < s.Y + s.Len));
+
+                        if (hitShip != null && !sunkThisTurn.Contains(hitShip) && hitShip.IsSunk(board))
                         {
-                            int cx = hitShip.X + (hitShip.Horizontal ? i : 0);
-                            int cy = hitShip.Y + (hitShip.Horizontal ? 0 : i);
-                            await messageService.SendWholeShipDown(game.Player1, game.Player2, shooterId, target, cx, cy);
+                            sunkThisTurn.Add(hitShip);
+                            for (int i = 0; i < hitShip.Len; i++)
+                            {
+                                int cx = hitShip.X + (hitShip.Horizontal ? i : 0);
+                                int cy = hitShip.Y + (hitShip.Horizontal ? 0 : i);
+                                await messageService.SendWholeShipDown(game.Player1, game.Player2, shooterId, target, cx, cy);
+                            }
                         }
+                    }
+
+                    // žaidimo pabaiga?
+                    if (!ships.Any(s => !s.IsSunk(board)))
+                    {
+                        game.SetIsGameOver(true);
+                        await messageService.SendGameOverAsync(game.Player1, game.Player2, shooterId);
+                        game.SaveGameToDB(shooterId);
+                        return;
                     }
                 }
 
-                // žaidimo pabaiga?
-                if (!ships.Any(s => !s.IsSunk(board)))
+                // “grazintu kur pataike” – siunčiam šauliui
+                await messageService.SendPowerUpSummaryAsync(shooter, "X", hitCoords.Select(s => (s.X, s.Y)));
+            }
+            else
+            {
+                // ====== sena logika (plus / combo / kiti) paliekama ======
+                IShotPattern patt = new SingleCellPattern();
+                if (plusShape) patt = new PlusPatternDecorator(patt);
+                if (xShape) patt = new XPatternDecorator(patt);
+
+                var shots = patt.GetShots(origin, w, h).Distinct().ToList();
+
+                foreach (var shot in shots)
                 {
-                    game.SetIsGameOver(true);
-                    await messageService.SendGameOverAsync(game.Player1, game.Player2, shooterId);
-                    game.SaveGameToDB(shooterId);
-                    return;
+                    var (success, hit) = await ProcessShot(shot.X, shot.Y, board, shooterId, game);
+                    if (!success) continue;
+
+                    await messageService.SendShotInfo(game.Player1, game.Player2, shooterId, target,
+                                                    shot.X, shot.Y, hit);
+
+                    if (hit)
+                    {
+                        lastShootHit = true;
+
+                        _ = effect.AfterCellHit(shot, board, ships);
+
+                        var hitShip = ships.FirstOrDefault(s =>
+                            (s.Horizontal && shot.Y == s.Y && shot.X >= s.X && shot.X < s.X + s.Len) ||
+                            (!s.Horizontal && shot.X == s.X && shot.Y >= s.Y && shot.Y < s.Y + s.Len));
+
+                        if (hitShip != null && !sunkThisTurn.Contains(hitShip) && hitShip.IsSunk(board))
+                        {
+                            sunkThisTurn.Add(hitShip);
+                            for (int i = 0; i < hitShip.Len; i++)
+                            {
+                                int cx = hitShip.X + (hitShip.Horizontal ? i : 0);
+                                int cy = hitShip.Y + (hitShip.Horizontal ? 0 : i);
+                                await messageService.SendWholeShipDown(game.Player1, game.Player2, shooterId, target, cx, cy);
+                            }
+                        }
+                    }
+
+                    if (!ships.Any(s => !s.IsSunk(board)))
+                    {
+                        game.SetIsGameOver(true);
+                        await messageService.SendGameOverAsync(game.Player1, game.Player2, shooterId);
+                        game.SaveGameToDB(shooterId);
+                        return;
+                    }
                 }
             }
 
@@ -165,8 +222,9 @@ namespace BattleshipServer.GameFacade
                 game.SetCurrentPlayer(target.Id);
             }
             await messageService.SendTurnMessage(game.Player1, game.Player2, game.CurrentPlayerId);
-        } 
-        
+        }
+
+
         //public void ProcessCompositeShot(Game game, Guid shooterId, int x0, int y0, bool isDoubleBomb, bool plusShape, bool xShape,bool superDamage)
         //=> ProcessCompositeShot(game, shooterId, new Shot(x0, y0), isDoubleBomb, plusShape, xShape, superDamage);
 
@@ -233,7 +291,7 @@ namespace BattleshipServer.GameFacade
 
             if (targetBoard[y, x] == 1)
             {
-                targetBoard[y, x] = 3; 
+                targetBoard[y, x] = 3;
                 hit = true;
 
                 await Scoreboard.Instance.AddHit(shooterId, game);

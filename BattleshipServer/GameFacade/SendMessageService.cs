@@ -28,9 +28,9 @@ namespace BattleshipServer.GameFacade
                                     int x, int y, bool hit, bool wholeDown, bool wasShield)
         {
             string result =
-                wasShield   ? "shield" :
-                wholeDown   ? "whole_ship_down" :
-                hit         ? "hit" :
+                wasShield ? "shield" :
+                wholeDown ? "whole_ship_down" :
+                hit ? "hit" :
                             "miss";
 
             var shotResult = JsonSerializer.SerializeToElement(new
@@ -72,5 +72,17 @@ namespace BattleshipServer.GameFacade
             await player1.SendAsync(new Models.MessageDto { Type = "turn", Payload = turnPayload });
             await player2.SendAsync(new Models.MessageDto { Type = "turn", Payload = turnPayload });
         }
+
+        public async Task SendPowerUpSummaryAsync(PlayerConnection shooter, string powerUp, IEnumerable<(int x, int y)> hits)
+        {
+            var payload = JsonSerializer.SerializeToElement(new
+            {
+                powerUp,
+                hits = hits.Select(h => new { x = h.x, y = h.y }).ToArray()
+            });
+
+            await shooter.SendAsync(new Models.MessageDto { Type = "powerUpSummary", Payload = payload });
+        }
+
     }
 }

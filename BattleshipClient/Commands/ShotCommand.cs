@@ -32,5 +32,12 @@ namespace BattleshipClient.Commands
         {
             _board.SetCell(_x, _y, _previousState);
         }
+
+        public override string ToString()
+        {
+            char col = (char)('A' + _x);
+            return $"{ShooterName}: {col}{_y + 1} ({_previousState} -> {_newState})";
+        }
+
     }
 }

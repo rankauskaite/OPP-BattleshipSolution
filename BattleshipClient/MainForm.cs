@@ -13,6 +13,7 @@ using BattleshipClient.Commands;
 using BattleshipClient.ConsoleInterpreter;
 using BattleshipClient.TemplateMethod;
 using BattleshipClient.Views.Renderers;
+using BattleshipClient.Mediator;
 
 namespace BattleshipClient
 {
@@ -92,6 +93,9 @@ namespace BattleshipClient
         private GameService GameService = new GameService();
         private SoundService soundService = new SoundService(new SoundFactory());
         private MessageService MessageService;
+        private IGameMediator _shotMediator;
+        private BoardShotInput _boardShotInput;
+
 
         // Other:
         public INetworkClient net { get; private set; }
@@ -105,6 +109,9 @@ namespace BattleshipClient
             net = networkClient;
 
             InitializeComponents();
+            _shotMediator = new GameMediator(this, new NetworkShotSender(net), new MainFormPowerUpContext(this));
+            _boardShotInput = new BoardShotInput(enemyBoard, _shotMediator);
+
             net.OnMessageReceived += Net_OnMessageReceived;
             ownBoard.ShipDropped += OwnBoard_ShipDropped;
             ownBoard.CellClicked += OwnBoard_CellClickedForRemoval;
@@ -227,7 +234,6 @@ namespace BattleshipClient
 
             ownBoard = new GameBoard { Location = new Point(80, 200) };
             enemyBoard = new GameBoard { Location = new Point(550, 200) };
-            enemyBoard.CellClicked += EnemyBoard_CellClicked;
 
             this.gameTemplate = new GameTemplate(10);
 
@@ -452,62 +458,10 @@ namespace BattleshipClient
 
         private async void EnemyBoard_CellClicked(object sender, Point p)
         {
-            if (!this.isMyTurn) { this.lblStatus.Text = "Not your turn."; return; }
-            this.lblStatus.Text = $"Firing at {p.X},{p.Y}...";
-            var shot = new
-            {
-                type = "shot",
-                payload = new
-                {
-                    x = p.X,
-                    y = p.Y,
-                    doubleBomb = this.doubleBombActive,
-                    plusShape = this.plusActive,
-                    xShape = this.xActive,
-                    superDamage = this.superActive
-                }
-            };
-            if (plusActive)
-            {
-                plusActive = false;
-                plusUsed = MaxPlus;
-                btnPlus.Enabled = false;
-                btnPlus.Text = "+ Shot (used)";
-                btnPlus.BackColor = SystemColors.Control;
-            }
-            if (xActive)
-            {
-                xActive = false;
-                xUsed = MaxX;
-                btnX.Enabled = false;
-                btnX.Text = "X Shot (used)";
-                btnX.BackColor = SystemColors.Control;
-            }
-            if (superActive)
-            {
-                superActive = false;
-                superUsed = MaxSuper;
-                btnSuper.Enabled = false;
-                btnSuper.Text = "Super (used)";
-                btnSuper.BackColor = SystemColors.Control;
-            }
-
-            SyncPowerUpsUI();
-
-            if (this.doubleBombActive)
-            {
-                this.doubleBombActive = false;
-                this.btnDoubleBombPowerUp.BackColor = SystemColors.Control;
-                this.doubleBombsUsed += 1;
-                if (this.doubleBombsUsed >= this.maxDoubleBombsCount)
-                {
-                    this.btnDoubleBombPowerUp.Enabled = false;
-                    this.btnDoubleBombPowerUp.Visible = false;
-                }
-                UpdatePowerUpLabel();
-            }
-            await net.SendAsync(shot);
+            if (_shotMediator == null) return;
+            await _shotMediator.RequestShotAsync(p.X, p.Y);
         }
+
 
         private void BtnRandomize_Click(object sender, EventArgs e)
         {
@@ -659,7 +613,7 @@ namespace BattleshipClient
             this.MessageService.HandleMessage(dto, this);
         }
 
-        void SyncPowerUpsUI()
+        internal void SyncPowerUpsUI()
         {
             btnPlus.Visible = powerUpsShown;
             btnX.Visible = powerUpsShown;
@@ -890,7 +844,6 @@ namespace BattleshipClient
             }
             if (this.enemyBoard != null)
             {
-                this.enemyBoard.CellClicked -= EnemyBoard_CellClicked;
             }
 
             this.Controls.Remove(ownBoard);
@@ -906,13 +859,13 @@ namespace BattleshipClient
 
             this.enemyBoard = this.gameTemplate.EnemyBoard;
             this.enemyBoard.Location = new Point(550, 200);
-            this.enemyBoard.CellClicked += EnemyBoard_CellClicked;
+            _boardShotInput.Attach(this.enemyBoard);
 
             this.Controls.Add(ownBoard);
             this.Controls.Add(enemyBoard);
         }
 
-        void UpdatePowerUpLabel()
+        internal void UpdatePowerUpLabel()
         {
             lblPowerUpInfo.Text =
                 "PowerUp info:\n" +
@@ -1236,8 +1189,8 @@ namespace BattleshipClient
             xActive = useXShape;
             superActive = useSuper;
 
-            var p = new Point(boardX, boardY);
-            EnemyBoard_CellClicked(enemyBoard, p);
+            _ = _shotMediator.RequestShotAsync(boardX, boardY);
+
         }
 
         private void StartConsoleInterpreter()
@@ -1296,5 +1249,26 @@ namespace BattleshipClient
 
             BtnRandomize_Click(this, EventArgs.Empty);
         }
+
+        internal bool PlusActive { get => plusActive; set => plusActive = value; }
+        internal bool XActive { get => xActive; set => xActive = value; }
+        internal bool SuperActive { get => superActive; set => superActive = value; }
+        internal bool DoubleBombActive { get => doubleBombActive; set => doubleBombActive = value; }
+
+        internal int PlusUsed { get => plusUsed; set => plusUsed = value; }
+        internal int XUsed { get => xUsed; set => xUsed = value; }
+        internal int SuperUsed { get => superUsed; set => superUsed = value; }
+
+        internal int MaxPlusCount => MaxPlus;
+        internal int MaxXCount => MaxX;
+        internal int MaxSuperCount => MaxSuper;
+
+        internal int DoubleBombsUsed { get => doubleBombsUsed; set => doubleBombsUsed = value; }
+        internal int MaxDoubleBombsCount => maxDoubleBombsCount;
+
+        internal Button BtnPlus => btnPlus;
+        internal Button BtnX => btnX;
+        internal Button BtnSuper => btnSuper;
+        internal Button BtnDoubleBombPowerUp => btnDoubleBombPowerUp;
     }
 }

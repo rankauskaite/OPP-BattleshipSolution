@@ -124,7 +124,6 @@ namespace BattleshipServer.Visitor
             return Task.CompletedTask;
         }
 
-        // NAUJAS – HEAL
         public Task VisitHealShipAsync(HealShipMessage message, PlayerConnection player)
         {
             var payload = message.Dto.Payload;

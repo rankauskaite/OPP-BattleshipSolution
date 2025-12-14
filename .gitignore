@@ -37,4 +37,4 @@ BattleshipClient/bin/Debug/net8.0-windows/
 .vs/OPP-BattleshipSolution/FileContentIndex/925f268e-a467-42ec-b749-5900ce921d47.vsidx
 /.vs/OPP-BattleshipSolution/FileContentIndex
 
-BattleshipClient/game_log.txt
+BattleshipClient/game_log*

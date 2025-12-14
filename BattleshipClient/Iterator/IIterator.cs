@@ -1,11 +1,9 @@
-using System.Drawing;
-
 namespace BattleshipClient.Iterators
 {
-    public interface IBoardCellIterator
+    public interface IIterator<out T>
     {
         bool MoveNext();
-        Point Current { get; }
+        T Current { get; }
         void Reset();
     }
 }

@@ -10,8 +10,10 @@ namespace BattleshipClient.Views
 
         public override void DrawBoard(GameBoard board)
         {
-            foreach (var p in new RowMajorCells(board.Size))
+            var it = new RowMajorCells(board.Size).GetIterator();
+            while (it.MoveNext())
             {
+                var p = it.Current;
                 var state = board.GetCell(p.X, p.Y);
                 renderer.RenderCell(p.X, p.Y, state, board);
             }

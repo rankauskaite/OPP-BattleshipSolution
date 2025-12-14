@@ -4,20 +4,20 @@ using System.Drawing;
 
 namespace BattleshipClient.Iterators
 {
-    public sealed class RowMajorCells : IBoardCellEnumerable, IEnumerable<Point>
+    public sealed class RowMajorCells : IIterable<Point>, IEnumerable<Point>
     {
         private readonly int _size;
 
         public RowMajorCells(int size) => _size = size;
 
-        // Iterator (mūsų) – naudinga gynime parodyti
-        public IBoardCellIterator GetIterator() => new RowMajorIterator(_size);
+        public IIterator<Point> GetIterator() => new RowMajorIterator(_size);
+        IIterator<Point> IIterable<Point>.GetIterator() => GetIterator();
 
-        // Patogumui – kad veiktų foreach natūraliai
+
         public IEnumerator<Point> GetEnumerator() => new RowMajorEnumerator(_size);
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-        private sealed class RowMajorIterator : IBoardCellIterator
+        private sealed class RowMajorIterator : IIterator<Point>
         {
             private readonly int _n;
             private int _r = 0, _c = -1;

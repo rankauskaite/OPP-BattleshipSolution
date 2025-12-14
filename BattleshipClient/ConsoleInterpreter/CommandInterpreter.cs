@@ -14,6 +14,7 @@ namespace BattleshipClient.ConsoleInterpreter
             _expressions.Add(new PowerUpShootExpression());
             _expressions.Add(new UndoExpression());
             _expressions.Add(new RedoExpression());
+            _expressions.Add(new HistoryExpression());
         }
 
         public void Interpret(string input, MainForm form)

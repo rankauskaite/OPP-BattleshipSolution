@@ -27,6 +27,7 @@ namespace BattleshipClient.ConsoleInterpreter
             Console.WriteLine("  redo       - pakartoti atšauktą komandą");
             Console.WriteLine("  help / ?   - pagalbos tekstas");
             Console.WriteLine("  exit       - išeiti iš konsolės režimo");
+            Console.WriteLine("  history    - parodyti komandų istoriją");
         }
     }
 }

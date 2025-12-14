@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Windows.Input;
+using BattleshipClient.Iterators;
 
 namespace BattleshipClient.Commands
 {
@@ -52,5 +53,9 @@ namespace BattleshipClient.Commands
             _undoStack.Clear();
             _redoStack.Clear();
         }
+
+        public IIterable<ICommand> GetUndoHistory() => new StackIterable<ICommand>(_undoStack);
+        public IIterable<ICommand> GetRedoHistory() => new StackIterable<ICommand>(_redoStack);
+
     }
 }

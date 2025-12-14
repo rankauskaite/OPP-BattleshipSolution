@@ -19,7 +19,6 @@ namespace BattleshipServer
         Game Clone();
     }
 
-    // MEMENTO – marker interfeisas
     public interface IGameMemento
     {
     }
@@ -48,22 +47,14 @@ namespace BattleshipServer
 
         private bool _isGameOver = false;
 
-        // --- Server-side skaitikliai per žaidėją (tam, kad Memento atstatytų teisingai) ---
-
-        // Heal
         private int _healUsedP1, _healUsedP2;
-
-        // Shields
         private int _safeShieldsUsedP1, _safeShieldsUsedP2;
         private int _invisibleShieldsUsedP1, _invisibleShieldsUsedP2;
-
-        // PowerUp šūviai
         private int _plusUsedP1, _plusUsedP2;
         private int _xUsedP1, _xUsedP2;
         private int _superUsedP1, _superUsedP2;
         private int _doubleBombUsedP1, _doubleBombUsedP2;
 
-        // Public getteriai, kad Facade galėtų nuskaityti
         public int HealUsedP1 => _healUsedP1;
         public int HealUsedP2 => _healUsedP2;
         public int SafeShieldsUsedP1 => _safeShieldsUsedP1;
@@ -80,7 +71,6 @@ namespace BattleshipServer
         public int DoubleBombUsedP1 => _doubleBombUsedP1;
         public int DoubleBombUsedP2 => _doubleBombUsedP2;
 
-        // MEMENTO – visas žaidimo snapshot'as
         private sealed class GameMemento : IGameMemento
         {
             public int[,] Board1 { get; }
@@ -88,7 +78,6 @@ namespace BattleshipServer
             public List<Ship> Ships1 { get; }
             public List<Ship> Ships2 { get; }
 
-            // 0 = nenustatyta, 1 = Player1, 2 = Player2
             public int CurrentPlayerIndex { get; }
 
             public bool IsStandardGame1 { get; }
@@ -208,7 +197,7 @@ namespace BattleshipServer
 
         public async Task StartGame()
         {
-            CurrentPlayerId = Player1.Id; // p1 starts
+            CurrentPlayerId = Player1.Id;
 
             var p1Payload = JsonSerializer.SerializeToElement(new
             {
@@ -233,7 +222,6 @@ namespace BattleshipServer
 
         public async Task ProcessShot(Guid shooterId, int x, int y, bool isDoubleBomb)
         {
-            // Paprastas šūvis su doubleBomb – čia dar neregistruojam plus/X/super, nes jų čia nėra
             await gameFacade.HandleShot(this, shooterId, x, y, isDoubleBomb);
         }
 
@@ -242,9 +230,6 @@ namespace BattleshipServer
             await gameFacade.HandleCompositeShot(this, shooterId, x0, y0, isDoubleBomb, plusShape, xShape, superDamage);
         }
 
-        /// <summary>
-        /// Iškviečiam KIEKVIENAM šūviui, kuriame buvo pasirinktas bent vienas powerup.
-        /// </summary>
         public void RegisterPowerUpUse(Guid shooterId, bool isDoubleBomb, bool plusShape, bool xShape, bool superDamage)
         {
             bool isP1 = shooterId == Player1.Id;
@@ -360,9 +345,6 @@ namespace BattleshipServer
             }
         }
 
-        /// <summary>
-        /// Gydymas
-        /// </summary>
         public List<(int x, int y)> HealShip(Guid playerId, int x, int y)
         {
             int[,] board;
@@ -444,7 +426,6 @@ namespace BattleshipServer
             _db.SaveGame(Player1.Name ?? Player1.Id.ToString(), Player2.Name ?? Player2.Id.ToString(), shooterId.ToString());
         }
 
-        // Prototype
         public Game Clone()
         {
             var clone = (Game)MemberwiseClone();

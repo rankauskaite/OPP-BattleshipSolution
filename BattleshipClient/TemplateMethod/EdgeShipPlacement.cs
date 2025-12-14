@@ -4,9 +4,6 @@ using BattleshipClient.Models;
 
 namespace BattleshipClient.TemplateMethod
 {
-    /// <summary>
-    /// Strategija, kuri bando laivus išdėstyti arčiau lentos kraštų.
-    /// </summary>
     public sealed class EdgeShipPlacement : ShipPlacementTemplate
     {
         private readonly Random _rnd = new Random();
@@ -24,25 +21,25 @@ namespace BattleshipClient.TemplateMethod
 
             switch (side)
             {
-                case 0: // viršutinė eilė, horizontalus
+                case 0:
                     horiz = true;
                     x = _rnd.Next(0, size - length + 1);
                     y = 0;
                     break;
 
-                case 1: // apatinė eilė, horizontalus
+                case 1:
                     horiz = true;
                     x = _rnd.Next(0, size - length + 1);
                     y = size - 1;
                     break;
 
-                case 2: // kairys stulpelis, vertikalus
+                case 2:
                     horiz = false;
                     x = 0;
                     y = _rnd.Next(0, size - length + 1);
                     break;
 
-                default: // dešinys stulpelis, vertikalus
+                default:
                     horiz = false;
                     x = size - 1;
                     y = _rnd.Next(0, size - length + 1);

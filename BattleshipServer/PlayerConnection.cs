@@ -42,7 +42,6 @@ namespace BattleshipServer
                             Console.WriteLine($"[PlayerConnection] Close received from {Name} ({Id}).");
                             await Socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by client", CancellationToken.None);
 
-                            // NEW: pranešam GameManager'iui, kad žaidėjas atsijungė
                             _manager.HandlePlayerDisconnected(this);
                             return;
                         }
@@ -63,7 +62,6 @@ namespace BattleshipServer
                     }
                 }
 
-                // NEW: jei kažkokiu būdu išėjom iš ciklo be explicit Close žinutės
                 Console.WriteLine($"[PlayerConnection] Socket for {Name} ({Id}) no longer open, treating as disconnect.");
                 _manager.HandlePlayerDisconnected(this);
             }
@@ -71,7 +69,6 @@ namespace BattleshipServer
             {
                 Console.WriteLine($"[PlayerConnection] Error for {Name} ({Id}): {ex.Message}");
 
-                // NEW: exception atveju taip pat laikom, kad žaidėjas atsijungė
                 _manager.HandlePlayerDisconnected(this);
             }
         }

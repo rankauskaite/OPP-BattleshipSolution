@@ -26,7 +26,6 @@ namespace BattleshipClient.TemplateMethod
 
             int size = map.GetLength(0);
 
-            // buffer zona
             for (int i = -1; i <= length; i++)
             {
                 for (int j = -1; j <= 1; j++)

@@ -22,11 +22,7 @@ namespace BattleshipServer
         private readonly List<Game> _games = new();
         private readonly Database _db = new Database("battleship.db");
         private readonly ConcurrentDictionary<Guid, (Game game, IBotPlayerController bot)> _botGames = new();
-
-        // Naujas žemėlapis: žaidėjo vardas -> Game (reconnect’ui)
         private readonly ConcurrentDictionary<string, Game> _nameToGame = new();
-
-        // MEMENTO saugykla – autosave: playerName -> paskutinis žaidimo snapshot
         private readonly ConcurrentDictionary<string, IGameMemento> copiedGames = new();
 
         private string GetPlayerKey(string? name)
@@ -60,7 +56,6 @@ namespace BattleshipServer
             _games.Add(game);
             _playerToGame[playerId] = game;
 
-            // jei PlayerName jau žinomas – užregistruojam ir čia
             if (!string.IsNullOrWhiteSpace(game.Player1.Name))
                 _nameToGame[game.Player1.Name] = game;
             if (!string.IsNullOrWhiteSpace(game.Player2.Name))
@@ -121,10 +116,8 @@ namespace BattleshipServer
                     if (!string.IsNullOrWhiteSpace(p2.Name))
                         _nameToGame[p2.Name] = g;
 
-                    // Show player names on scoreboard
                     await Scoreboard.Instance.RegisterPlayers(p1.Name, p2.Name, g);
 
-                    // Notify both that they were paired
                     var pairedPayload = JsonSerializer.SerializeToElement(new { message = $"Paired: {p1.Name} <-> {p2.Name}" });
                     _ = p1.SendAsync(new MessageDto { Type = "info", Payload = pairedPayload });
                     _ = p2.SendAsync(new MessageDto { Type = "info", Payload = pairedPayload });
@@ -145,21 +138,19 @@ namespace BattleshipServer
             if (!string.IsNullOrWhiteSpace(g.Player1.Name))
             {
                 _nameToGame.TryRemove(g.Player1.Name, out _);
-                ClearGameCopyByName(g.Player1.Name); // išvalom autosave
+                ClearGameCopyByName(g.Player1.Name);
             }
 
             if (!string.IsNullOrWhiteSpace(g.Player2.Name))
             {
                 _nameToGame.TryRemove(g.Player2.Name, out _);
-                ClearGameCopyByName(g.Player2.Name); // išvalom autosave
+                ClearGameCopyByName(g.Player2.Name);
             }
 
             Console.WriteLine("[Manager] Game removed.");
         }
 
         // --- MEMENTO: autosave API ---
-
-        // Saugo paskutinį snapshot'ą abiem žaidėjams pagal vardą
         public void StoreLatestSnapshotForGame(Game game)
         {
             var snapshot = game.CreateMemento();
@@ -168,7 +159,6 @@ namespace BattleshipServer
             StoreGameCopy(game.Player2, snapshot);
         }
 
-        // Saugo memento konkrečiam žaidėjui (pagal vardą)
         public void StoreGameCopy(PlayerConnection player, IGameMemento memento)
         {
             var key = GetPlayerKey(player.Name);
@@ -178,7 +168,6 @@ namespace BattleshipServer
             Console.WriteLine($"[MEMENTO] StoreGameCopy for {key}");
         }
 
-        // Gauna memento pagal žaidėjo vardą
         public IGameMemento? GetCopiedGameByPlayerName(string? name)
         {
             var key = GetPlayerKey(name);
@@ -203,7 +192,6 @@ namespace BattleshipServer
             _playerToGame[player.Id] = game;
         }
 
-        // Reconnect pagal žaidėjo vardą
         public Game? GetGameByPlayerName(string? name)
         {
             if (string.IsNullOrWhiteSpace(name)) return null;
@@ -218,13 +206,10 @@ namespace BattleshipServer
         {
             Console.WriteLine($"[Disconnect] Player {player.Name} ({player.Id}) disconnected.");
 
-            // Pirmiausia – pabandome rasti žaidimą pagal PlayerId
             if (_playerToGame.TryGetValue(player.Id, out var game))
             {
-                // Išimam šį žaidėją iš žemėlapio
                 _playerToGame.TryRemove(player.Id, out _);
 
-                // Patikrinam, ar dar yra bent vienas kitas playeris, kuris tebėra šiame žaidime
                 bool otherStillInGame = false;
                 foreach (var kv in _playerToGame)
                 {
@@ -237,9 +222,8 @@ namespace BattleshipServer
 
                 if (!otherStillInGame)
                 {
-                    // Abu žaidėjai atsijungė – laikom, kad žaidimas baigtas ir išvalom viską
                     Console.WriteLine("[Disconnect] This was the last player in the game. Ending game and clearing snapshots.");
-                    GameEnded(game); // išvalys _games, _nameToGame ir copiedGames
+                    GameEnded(game);
                 }
                 else
                 {
@@ -251,7 +235,6 @@ namespace BattleshipServer
                 Console.WriteLine($"[Disconnect] Player {player.Name} is not mapped to any active game.");
             }
 
-            // Bet kokiu atveju – to žaidėjo autosave nebėra aktualus
             ClearGameCopyByName(player.Name);
         }
     }

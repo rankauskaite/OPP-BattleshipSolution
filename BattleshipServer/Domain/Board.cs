@@ -12,7 +12,7 @@ namespace BattleshipServer.Domain
     {
         public ShotKind Kind { get; init; }
         public Coordinate Cell { get; init; }
-        public List<Coordinate>? SunkCells { get; init; } // kai Sunk
+        public List<Coordinate>? SunkCells { get; init; }
     }
 
     public sealed class Board
@@ -48,24 +48,16 @@ namespace BattleshipServer.Domain
             return Ships.All(s => s.IsSunk(Cells) || s.MarkedSunk);
         }
 
-        /// <summary>
-        /// Pabando išgelbėti konkretų laivą lentoje (pvz., panaudojus specialų power-up).
-        /// Pagal State pattern logiką – tik ShipHitState leis tai padaryti.
-        /// </summary>
         public void SaveShip(Ship ship)
         {
             if (ship == null) return;
             ship.TrySave(Cells);
         }
 
-        /// <summary>
-        /// Pritaiko šūvį duotoje koordinatėje ir grąžina rezultatą (Miss / Hit / Sunk),
-        /// kartu atnaujindamas lentos ir laivo būsenas.
-        /// </summary>
         public ShotOutcome ApplyShot(int x, int y)
         {
             if (x < 0 || x >= Size || y < 0 || y >= Size)
-                return new ShotOutcome { Kind = ShotKind.Miss, Cell = new Coordinate(x, y) }; // saugiklis
+                return new ShotOutcome { Kind = ShotKind.Miss, Cell = new Coordinate(x, y) };
 
             var cell = Cells[y, x];
             if (cell == CellState.Empty)
@@ -75,11 +67,9 @@ namespace BattleshipServer.Domain
             }
             if (cell == CellState.Ship)
             {
-                // Surandame, kuriam laivui priklauso šis langelis
                 var victim = Ships.FirstOrDefault(s => s.Contains(x, y));
                 if (victim != null)
                 {
-                    // Pagrindinė logika deleguojama laivo būsenai (State pattern)
                     victim.RegisterHit(Cells, x, y);
 
                     if (victim.MarkedSunk)
@@ -95,12 +85,10 @@ namespace BattleshipServer.Domain
                     return new ShotOutcome { Kind = ShotKind.Hit, Cell = new Coordinate(x, y) };
                 }
 
-                // Fallback: jei kažkodėl laivo neradome (neturėtų nutikti)
                 Cells[y, x] = CellState.Hit;
                 return new ShotOutcome { Kind = ShotKind.Hit, Cell = new Coordinate(x, y) };
             }
 
-            // buvo Hit/Miss/Sunk – pakartotas šūvis: traktuojam kaip Miss (neperjungiant ėjimo tvarkai sprendžia Game)
             return new ShotOutcome { Kind = ShotKind.Miss, Cell = new Coordinate(x, y) };
         }
     }

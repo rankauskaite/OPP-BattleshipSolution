@@ -35,7 +35,6 @@ namespace BattleshipServer.GameManagerFacade
                 player.Name = nmElem.GetString();
             }
 
-            // --- bandome traktuoti kaip reconnect, jei toks žaidimas jau yra ---
             Game? existing = manager.GetGameByPlayerName(player.Name);
             if (existing != null && !existing.GetIsGameOver())
             {
@@ -99,7 +98,6 @@ namespace BattleshipServer.GameManagerFacade
                 return;
             }
 
-            // --- naujas žaidėjas ---
             manager.AddToWaitingQueue(player);
             Console.WriteLine($"[Manager] Player registered: {player.Name} ({player.Id})");
             await messageService.SendRegisterMessage(player);
@@ -181,10 +179,8 @@ namespace BattleshipServer.GameManagerFacade
             retrieve.SetNext(process);
             process.SetNext(bot);
 
-            // Pirma – įvykdom šūvį
             await validate.HandleAsync(manager, player, dto);
 
-            // Po to – atnaujinam powerup skaitiklius ir darom autosave
             var game = manager.GetPlayersGame(player.Id);
             if (game != null)
             {
@@ -224,7 +220,6 @@ namespace BattleshipServer.GameManagerFacade
             }
             else if (dto.Payload.TryGetProperty("placeShield", out var pe) && pe.ValueKind == JsonValueKind.String)
             {
-                // suderinam su kliento property pavadinimu
                 modeStr = pe.GetString() ?? "safetiness";
             }
 

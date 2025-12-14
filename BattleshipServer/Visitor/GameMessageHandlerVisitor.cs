@@ -53,7 +53,6 @@ namespace BattleshipServer.Visitor
             await gameManagerFacade.HandlePlaceShield(_manager, player, message.Dto);
         }
 
-        // NAUJAS – HEAL
         public async Task VisitHealShipAsync(HealShipMessage message, PlayerConnection player)
         {
             await gameManagerFacade.HandleHealShip(_manager, player, message.Dto);

@@ -6,12 +6,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks; 
+using System.Threading.Tasks;
 using BattleshipServer.Defense;
 using BattleshipServer.State;
 using BattleshipServer.ChainOfResponsibility; 
 using System.IO;
-
 
 
 namespace BattleshipServer.GameManagerFacade
@@ -36,6 +35,71 @@ namespace BattleshipServer.GameManagerFacade
                 player.Name = nmElem.GetString();
             }
 
+            // --- bandome traktuoti kaip reconnect, jei toks žaidimas jau yra ---
+            Game? existing = manager.GetGameByPlayerName(player.Name);
+            if (existing != null && !existing.GetIsGameOver())
+            {
+                Console.WriteLine($"[Reconnect] Player {player.Name} reconnected.");
+
+                existing.ReplacePlayerConnection(player);
+                manager.RegisterExistingConnection(player, existing);
+
+                var snapshot = manager.GetCopiedGameByPlayerName(player.Name);
+                if (snapshot != null)
+                {
+                    existing.RestoreMemento(snapshot);
+                }
+
+                var opponentConn = existing.Player1.Name == player.Name
+                    ? existing.Player2
+                    : existing.Player1;
+
+                List<ShipDto> ships = existing.GetPlayerShips(player.Id);
+
+                bool isP1 = existing.Player1.Name == player.Name;
+
+                int healUsed = isP1 ? existing.HealUsedP1 : existing.HealUsedP2;
+                int safeShieldsUsed = isP1 ? existing.SafeShieldsUsedP1 : existing.SafeShieldsUsedP2;
+                int invisibleShieldsUsed = isP1 ? existing.InvisibleShieldsUsedP1 : existing.InvisibleShieldsUsedP2;
+                int plusUsed = isP1 ? existing.PlusUsedP1 : existing.PlusUsedP2;
+                int xUsed = isP1 ? existing.XUsedP1 : existing.XUsedP2;
+                int superUsed = isP1 ? existing.SuperUsedP1 : existing.SuperUsedP2;
+                int doubleBombUsed = isP1 ? existing.DoubleBombUsedP1 : existing.DoubleBombUsedP2;
+
+                var restorePayload = JsonSerializer.SerializeToElement(new
+                {
+                    yourId = player.Id.ToString(),
+                    yourName = player.Name,
+                    opponentId = opponentConn.Id.ToString(),
+                    opponentName = opponentConn.Name,
+                    current = existing.CurrentPlayerId.ToString(),
+                    isGameOver = existing.GetIsGameOver(),
+                    isStandard = existing.IsStandardForPlayer(player.Id),
+                    boardSelf = existing.GetBoardForPlayerAsJagged(player.Id),
+                    boardEnemy = existing.GetEnemyBoardViewForPlayerAsJagged(player.Id),
+                    ships = ships.Select(s => new { x = s.X, y = s.Y, len = s.Len, dir = s.Dir }).ToArray(),
+                    powerUps = new
+                    {
+                        healUsed,
+                        safeShieldsUsed,
+                        invisibleShieldsUsed,
+                        plusUsed,
+                        xUsed,
+                        superUsed,
+                        doubleBombUsed
+                    }
+                });
+
+                await player.SendAsync(new MessageDto
+                {
+                    Type = "restoreState",
+                    Payload = restorePayload
+                });
+
+                return;
+            }
+
+            // --- naujas žaidėjas ---
             manager.AddToWaitingQueue(player);
             Console.WriteLine($"[Manager] Player registered: {player.Name} ({player.Id})");
             await messageService.SendRegisterMessage(player);
@@ -51,12 +115,11 @@ namespace BattleshipServer.GameManagerFacade
                 List<ShipDto> ships = messageDtoService.GetShipsFromDto(dto);
                 game.PlaceShips(player.Id, ships);
                 Console.WriteLine($"[Manager] Player {player.Name} placed {ships.Count} ships.");
+
                 if (game.IsReady && game.GameModesMatch)
                 {
-                    // ČIA įjungiame random gynybą su Area + Cell shields
-                    //DefenseSetup.SetupRandomDefense(game);
-
                     await game.StartGame();
+                    manager.StoreLatestSnapshotForGame(game);
                 }
                 else if (!game.GameModesMatch)
                 {
@@ -71,24 +134,35 @@ namespace BattleshipServer.GameManagerFacade
 
         public async Task CopyGame(GameManager manager, PlayerConnection player)
         {
-            var payload = JsonSerializer.SerializeToElement(new { message = "No game to save" });
             Game? game = manager.GetPlayersGame(player.Id);
-            if(game != null)
+            if (game != null)
             {
-                Console.WriteLine($"[Manager] Copying game for player {player.Name}...");
-                manager.StoreGameCopy(player.Id, game.Clone());
+                Console.WriteLine($"[Manager] Copying full game state for player {player.Name}...");
+                var memento = game.CreateMemento();
+                manager.StoreGameCopy(player, memento);
             }
+
             string message = game != null ? "Game copied successfully" : "No game to save";
             await messageService.SendGameCopyInfo(player, message);
         }
 
         public async Task UseGameCopy(GameManager manager, PlayerConnection player)
         {
-            var gameCopy = manager.GetCopiedGame(player.Id);
-            if(gameCopy != null)
+            Game? game = manager.GetPlayersGame(player.Id);
+            var memento = manager.GetCopiedGameByPlayerName(player.Name);
+
+            if (game != null && memento != null)
             {
-                List<ShipDto> ships = gameCopy.GetPlayerShips(player.Id);
+                game.RestoreMemento(memento);
+
+                List<ShipDto> ships = game.GetPlayerShips(player.Id);
                 await messageService.SendShipInfo(player, ships);
+
+                var infoPayload = JsonSerializer.SerializeToElement(new
+                {
+                    message = "Game state restored from saved snapshot."
+                });
+                await player.SendAsync(new MessageDto { Type = "info", Payload = infoPayload });
             }
             else
             {
@@ -107,7 +181,28 @@ namespace BattleshipServer.GameManagerFacade
             retrieve.SetNext(process);
             process.SetNext(bot);
 
+            // Pirma – įvykdom šūvį
             await validate.HandleAsync(manager, player, dto);
+
+            // Po to – atnaujinam powerup skaitiklius ir darom autosave
+            var game = manager.GetPlayersGame(player.Id);
+            if (game != null)
+            {
+                if (dto.Payload.ValueKind == JsonValueKind.Object)
+                {
+                    bool isDoubleBomb = dto.Payload.TryGetProperty("doubleBomb", out var db) && db.ValueKind == JsonValueKind.True;
+                    bool plusShape = dto.Payload.TryGetProperty("plusShape", out var ps) && ps.ValueKind == JsonValueKind.True;
+                    bool xShape = dto.Payload.TryGetProperty("xShape", out var xs) && xs.ValueKind == JsonValueKind.True;
+                    bool superDamage = dto.Payload.TryGetProperty("superDamage", out var sd) && sd.ValueKind == JsonValueKind.True;
+
+                    if (isDoubleBomb || plusShape || xShape || superDamage)
+                    {
+                        game.RegisterPowerUpUse(player.Id, isDoubleBomb, plusShape, xShape, superDamage);
+                    }
+                }
+
+                manager.StoreLatestSnapshotForGame(game);
+            }
         }
 
         public async Task HandlePlaceShield(GameManager manager, PlayerConnection player, MessageDto dto)
@@ -127,6 +222,11 @@ namespace BattleshipServer.GameManagerFacade
             {
                 modeStr = me.GetString() ?? "safetiness";
             }
+            else if (dto.Payload.TryGetProperty("placeShield", out var pe) && pe.ValueKind == JsonValueKind.String)
+            {
+                // suderinam su kliento property pavadinimu
+                modeStr = pe.GetString() ?? "safetiness";
+            }
 
             bool isArea = false;
             if (dto.Payload.TryGetProperty("isArea", out var ae) &&
@@ -135,12 +235,10 @@ namespace BattleshipServer.GameManagerFacade
                 isArea = ae.GetBoolean();
             }
 
-            // PVP žaidimas, kuriame žaidžia šis player'io Id
             Game? game = manager.GetPlayersGame(player.Id);
             if (game == null)
                 return;
 
-            // Jei tai NPC žaidimas – ignoruojam
             var botGame = manager.GetBotGame(player.Id);
             if (botGame.bot != null)
                 return;
@@ -160,21 +258,19 @@ namespace BattleshipServer.GameManagerFacade
             };
 
 
-             if (isArea)
+            if (isArea)
             {
                 int x1 = Math.Max(0, x - 1);
                 int y1 = Math.Max(0, y - 1);
                 int x2 = Math.Min(9, x + 1);
                 int y2 = Math.Min(9, y + 1);
 
-                // Zona visada dedama kaip tikras Composite: viduje bus 9 Leaf (CellShield).
                 game.AddAreaShield(player.Id, x1, y1, x2, y2, mode);
             }
             else
             {
                 game.AddCellShield(player.Id, x, y, mode);
             }
-
 
             var payload = JsonSerializer.SerializeToElement(new
             {
@@ -183,6 +279,8 @@ namespace BattleshipServer.GameManagerFacade
                     : $"Placed {mode} shield at {x},{y}"
             });
             await player.SendAsync(new MessageDto { Type = "info", Payload = payload });
+
+            manager.StoreLatestSnapshotForGame(game);
         }
 
         public async Task HandleHealShip(GameManager manager, PlayerConnection player, MessageDto dto)
@@ -193,7 +291,6 @@ namespace BattleshipServer.GameManagerFacade
 
             var payload = dto.Payload;
 
-            // Perskaitom langelių sąrašą iš žinutės
             var cells = new List<(int x, int y)>();
             foreach (var cell in payload.GetProperty("cells").EnumerateArray())
             {
@@ -205,18 +302,15 @@ namespace BattleshipServer.GameManagerFacade
             if (cells.Count == 0)
                 return;
 
-            // Naudojam pirmą langelį kaip atskaitos tašką – pagal jį randam laivą
             var first = cells[0];
 
             var healedCells = game.HealShip(player.Id, first.x, first.y);
 
             if (healedCells.Count == 0)
             {
-                // nieko neišgydė (laivas nenusautas, nuskendęs ar pan.) – nieko nesiunčiam
                 return;
             }
 
-            // Paruošiam atsakymo payload – kuriuos langelius reikia atnaujinti klientams
             var responsePayload = JsonSerializer.SerializeToElement(new
             {
                 healedPlayerId = player.Id.ToString(),
@@ -231,9 +325,10 @@ namespace BattleshipServer.GameManagerFacade
                 Payload = responsePayload
             };
 
-            // Išsiunčiam abiem žaidėjams – abu turi atsinaujinti lentas
             await game.Player1.SendAsync(response);
             await game.Player2.SendAsync(response);
+
+            manager.StoreLatestSnapshotForGame(game);
         }
 
         public void HandlePlayBot(GameManager manager, PlayerConnection player, MessageDto dto, Database db)

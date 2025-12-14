@@ -9,11 +9,10 @@ using BattleshipClient.Models;
 using BattleshipClient.Services;
 using BattleshipClient.Observers;
 using BattleshipClient.Factory;
-using BattleshipClient.Commands; 
+using BattleshipClient.Commands;
 using BattleshipClient.ConsoleInterpreter;
 using BattleshipClient.TemplateMethod;
 using BattleshipClient.Views.Renderers;
-
 
 namespace BattleshipClient
 {
@@ -38,10 +37,9 @@ namespace BattleshipClient
         public Button btnReplay;
         private Button btnToStart;
         private Button btnToEnd;
-        private Button btnPlus, btnX, btnSuper; 
+        private Button btnPlus, btnX, btnSuper;
         private Button btnShieldSafe, btnShieldInvisible, btnAreaShield;
         private Button btnHeal;
-
 
         // Labels:
         public Label lblStatus;
@@ -63,13 +61,11 @@ namespace BattleshipClient
         public List<Ship> ownShips { get; private set; } = new List<Ship>();
         public List<ShipDto> Ships { get; set; } = new List<ShipDto>();
 
-
         // Players info:
         public string myId { get; set; } = "";
         public string oppId { get; set; } = "";
         public string myName;
         public string oppName;
-
 
         // helper bools and counters:
         public bool isMyTurn = false;
@@ -105,14 +101,14 @@ namespace BattleshipClient
         private bool userChosePlacementMode = false;
 
         public MainForm(INetworkClient networkClient)
-        { 
+        {
             net = networkClient;
 
             InitializeComponents();
             net.OnMessageReceived += Net_OnMessageReceived;
             ownBoard.ShipDropped += OwnBoard_ShipDropped;
             ownBoard.CellClicked += OwnBoard_CellClickedForRemoval;
-            btnGameOver.Click += BtnGameOver_Click; 
+            btnGameOver.Click += BtnGameOver_Click;
 
             StartConsoleInterpreter();
         }
@@ -158,7 +154,7 @@ namespace BattleshipClient
             btnPlus = new Button { Text = "+ Shot", Location = new Point(560, 100), Visible = false, Enabled = false, AutoSize = true };
             btnX = new Button { Text = "X Shot", Visible = false, Enabled = false, AutoSize = true };
             btnSuper = new Button { Text = "Super", Visible = false, Enabled = false, AutoSize = true };
-            btnHeal = new Button{Text = "Heal", Visible = false, Enabled = false, AutoSize = true};
+            btnHeal = new Button { Text = "Heal", Visible = false, Enabled = false, AutoSize = true };
 
             btnPlus.Click += (s, e) => { if (plusUsed >= MaxPlus) return; plusActive = !plusActive; btnPlus.BackColor = plusActive ? Color.LightGreen : SystemColors.Control; };
             btnX.Click += (s, e) => { if (xUsed >= MaxX) return; xActive = !xActive; btnX.BackColor = xActive ? Color.LightGreen : SystemColors.Control; };
@@ -182,10 +178,10 @@ namespace BattleshipClient
                 btnHeal.BackColor = healActive ? Color.LightGreen : SystemColors.Control;
             };
 
-            this.Controls.AddRange(new Control[] { btnPlus, btnX, btnSuper, btnHeal }); 
+            this.Controls.AddRange(new Control[] { btnPlus, btnX, btnSuper, btnHeal });
 
             btnShieldSafe = new Button { Text = "Shield (Safe)", Visible = false, Enabled = false, AutoSize = true };
-            btnShieldInvisible = new Button { Text = "Shield (Invisible)", Visible = false, Enabled = false, AutoSize = true }; 
+            btnShieldInvisible = new Button { Text = "Shield (Invisible)", Visible = false, Enabled = false, AutoSize = true };
             btnAreaShield = new Button { Text = "Area Shield 3x3", Visible = false, Enabled = false, AutoSize = true };
 
             btnShieldSafe.Click += (s, e) =>
@@ -225,7 +221,6 @@ namespace BattleshipClient
                 areaShieldActive = !areaShieldActive;
                 btnAreaShield.BackColor = areaShieldActive ? Color.LightGreen : SystemColors.Control;
             };
-
 
             lblStatus = new Label { Text = "Not connected", Location = new Point(10, 40), AutoSize = true };
             lblPowerUpInfo = new Label { Location = new Point(10, 60), AutoSize = true, Visible = false };
@@ -324,9 +319,9 @@ namespace BattleshipClient
             topBar.Controls.Add(btnX);
             topBar.Controls.Add(btnSuper);
             topBar.Controls.Add(btnHeal);
-            topBar.Controls.Add(btnDoubleBombPowerUp); 
+            topBar.Controls.Add(btnDoubleBombPowerUp);
             topBar.Controls.Add(btnShieldSafe);
-            topBar.Controls.Add(btnShieldInvisible); 
+            topBar.Controls.Add(btnShieldInvisible);
             topBar.Controls.Add(btnAreaShield);
 
             lblScoreboardBottom = new Label
@@ -449,7 +444,7 @@ namespace BattleshipClient
                     sp.Invalidate();
                 }
 
-                lblStatus.Text = $"Orientation changed to {(placingHorizontal ? "H" : "V")}";
+                lblStatus.Text = $"Orientation changed to {(placingHorizontal ? "H" : "V")}.";
                 return true;
             }
             return base.ProcessCmdKey(ref msg, keyData);
@@ -466,15 +461,36 @@ namespace BattleshipClient
                 {
                     x = p.X,
                     y = p.Y,
-                    doubleBomb = this.doubleBombActive,  // likusi logika kaip buvo
+                    doubleBomb = this.doubleBombActive,
                     plusShape = this.plusActive,
                     xShape = this.xActive,
                     superDamage = this.superActive
                 }
             };
-            if (plusActive) { plusActive = false; plusUsed = MaxPlus; btnPlus.Enabled = false; btnPlus.Text = "+ Shot (used)"; btnPlus.BackColor = SystemColors.Control; }
-            if (xActive) { xActive = false; xUsed = MaxX; btnX.Enabled = false; btnX.Text = "X Shot (used)"; btnX.BackColor = SystemColors.Control; }
-            if (superActive) { superActive = false; superUsed = MaxSuper; btnSuper.Enabled = false; btnSuper.Text = "Super (used)"; btnSuper.BackColor = SystemColors.Control; }
+            if (plusActive)
+            {
+                plusActive = false;
+                plusUsed = MaxPlus;
+                btnPlus.Enabled = false;
+                btnPlus.Text = "+ Shot (used)";
+                btnPlus.BackColor = SystemColors.Control;
+            }
+            if (xActive)
+            {
+                xActive = false;
+                xUsed = MaxX;
+                btnX.Enabled = false;
+                btnX.Text = "X Shot (used)";
+                btnX.BackColor = SystemColors.Control;
+            }
+            if (superActive)
+            {
+                superActive = false;
+                superUsed = MaxSuper;
+                btnSuper.Enabled = false;
+                btnSuper.Text = "Super (used)";
+                btnSuper.BackColor = SystemColors.Control;
+            }
 
             SyncPowerUpsUI();
 
@@ -505,8 +521,6 @@ namespace BattleshipClient
             for (int r = 0; r < ownBoard.Size; r++)
                 for (int c = 0; c < ownBoard.Size; c++)
                     ownBoard.SetCell(c, r, temp[r, c]);
-
-            //lblStatus.Text = $"Randomized {myShips.Count} ships.";
         }
 
         private async void BtnReady_Click(object sender, EventArgs e)
@@ -550,13 +564,13 @@ namespace BattleshipClient
                 this.btnDoubleBombPowerUp.Visible = true;
             }
             UpdatePowerUpLabel();
-            plusUsed = xUsed = superUsed = 0;      // reset skaitiklių
+            plusUsed = xUsed = superUsed = 0;
             plusActive = xActive = superActive = false;
             btnPlus.Text = "+ Shot"; btnPlus.BackColor = SystemColors.Control;
             btnX.Text = "X Shot"; btnX.BackColor = SystemColors.Control;
             btnSuper.Text = "Super"; btnSuper.BackColor = SystemColors.Control;
 
-            powerUpsShown = true;                  // Žaidimas prasidėjo – rodom
+            powerUpsShown = true;
             SyncPowerUpsUI();
             placingShips = false;
             this.ownBoard.CellClicked -= OwnBoard_CellClickedForRemoval;
@@ -567,7 +581,7 @@ namespace BattleshipClient
             btnShieldSafe.Text = "Shield (Safe)";
             btnShieldInvisible.Text = "Shield (Invisible)";
             btnShieldSafe.BackColor = SystemColors.Control;
-            btnShieldInvisible.BackColor = SystemColors.Control; 
+            btnShieldInvisible.BackColor = SystemColors.Control;
             areaShieldActive = false;
             btnAreaShield.BackColor = SystemColors.Control;
         }
@@ -577,7 +591,7 @@ namespace BattleshipClient
             if (userChosePlacementMode == false)
             {
                 placementMode = PlacementMode.Random;
-                SetPlacementMode( placementMode );
+                SetPlacementMode(placementMode);
             }
             if (myShips.Count != this.gameTemplate.Ships.Count)
             {
@@ -604,7 +618,6 @@ namespace BattleshipClient
             this.btnX.Visible = true;
             this.btnSuper.Visible = true;
 
-            // (nebūtina, bet jei nori – kopija iš BtnReady_Click: įjungia Double Bomb pagal factory)
             if (this.gameTemplate.Powerups.TryGetValue("DoubleBomb", out int doubleBombsCount))
             {
                 this.maxDoubleBombsCount = doubleBombsCount;
@@ -634,6 +647,13 @@ namespace BattleshipClient
                 return;
             }
 
+            // naujas tipas iš serverio – pilnas žaidimo atstatymas
+            if (dto.Type == "restoreState")
+            {
+                ApplyRestoredState(dto.Payload);
+                return;
+            }
+
             if (MessageService == null) return;
 
             this.MessageService.HandleMessage(dto, this);
@@ -644,7 +664,7 @@ namespace BattleshipClient
             btnPlus.Visible = powerUpsShown;
             btnX.Visible = powerUpsShown;
             btnSuper.Visible = powerUpsShown;
-            btnHeal.Visible = powerUpsShown;                 // NEW
+            btnHeal.Visible = powerUpsShown;
             btnShieldSafe.Visible = powerUpsShown;
             btnShieldInvisible.Visible = powerUpsShown;
             btnAreaShield.Visible = powerUpsShown;
@@ -652,14 +672,13 @@ namespace BattleshipClient
             btnPlus.Enabled = powerUpsShown && (plusUsed < MaxPlus);
             btnX.Enabled = powerUpsShown && (xUsed < MaxX);
             btnSuper.Enabled = powerUpsShown && (superUsed < MaxSuper);
-            btnHeal.Enabled = powerUpsShown && (healUsed < MaxHeal); // NEW
+            btnHeal.Enabled = powerUpsShown && (healUsed < MaxHeal);
 
             btnShieldSafe.Enabled = powerUpsShown && (safeShieldsUsed < MaxSafeShields);
             btnShieldInvisible.Enabled = powerUpsShown && (invisibleShieldsUsed < MaxInvisibleShields);
             btnAreaShield.Enabled = powerUpsShown
                 && (safeShieldsUsed < MaxSafeShields || invisibleShieldsUsed < MaxInvisibleShields);
         }
-
 
         private async void BtnGameOver_Click(object sender, EventArgs e)
         {
@@ -744,7 +763,6 @@ namespace BattleshipClient
                     return;
                 }
 
-                // Išsiunčiam žinutę serveriui (čia gali pasinaudoti fullShip serverio pusėje)
                 var healMsg = new
                 {
                     type = "healShip",
@@ -753,11 +771,10 @@ namespace BattleshipClient
                         cells = shipCells
                                 .Select(c => new { x = c.X, y = c.Y })
                                 .ToArray()
-                                        }
+                    }
                 };
                 await net.SendAsync(healMsg);
 
-                // Lokaliai atstatom VISĄ laivą (visus Hit -> Ship)
                 foreach (var cell in shipCells)
                 {
                     if (ownBoard.GetCell(cell.X, cell.Y) == CellState.Hit)
@@ -765,8 +782,6 @@ namespace BattleshipClient
                 }
                 ownBoard.Invalidate();
 
-                // Po siuntimo išjungiam heal ir pažymim, kad panaudotas
-                
                 healActive = false;
                 healUsed++;
                 btnHeal.BackColor = SystemColors.Control;
@@ -785,7 +800,7 @@ namespace BattleshipClient
             if (!(shieldSafeActive || shieldInvisibleActive)) return;
 
             string mode = shieldSafeActive ? "safetiness" : "visibility";
-            bool isArea = areaShieldActive;   // jeigu Area mygtukas – siųsim zoną
+            bool isArea = areaShieldActive;
 
             var msg = new
             {
@@ -830,7 +845,6 @@ namespace BattleshipClient
 
             SyncPowerUpsUI();
         }
-
 
         public void BtnDoubleBombPowerUp_Click(object sender, EventArgs e)
         {
@@ -911,6 +925,193 @@ namespace BattleshipClient
             return this.gameTemplate.Ships.Count;
         }
 
+        private CellState MapIntToCellState(int v)
+        {
+            return v switch
+            {
+                1 => CellState.Ship,
+                2 => CellState.Miss,
+                3 => CellState.Hit,
+                4 => CellState.Whole_ship_down,
+                _ => CellState.Empty
+            };
+        }
+
+        private void ApplyRestoredState(JsonElement payload)
+        {
+            try
+            {
+                myId = payload.GetProperty("yourId").GetString() ?? "";
+                oppId = payload.GetProperty("opponentId").GetString() ?? "";
+                myName = payload.GetProperty("yourName").GetString() ?? myName;
+                oppName = payload.GetProperty("opponentName").GetString() ?? oppName;
+
+                // 🔹 NUSKAITOM AR ŽAIDIMAS STANDARD / MINI
+                bool isStandard = false;
+                if (payload.TryGetProperty("isStandard", out var isStdElem) &&
+                    isStdElem.ValueKind == JsonValueKind.True || isStdElem.ValueKind == JsonValueKind.False)
+                {
+                    // GetBoolean tiks, nes ValueKind bus True/False
+                    isStandard = isStdElem.GetBoolean();
+                }
+
+                // 🔹 PERKURIAM GAME TEMPLATE PAGAL TIPĄ, KAD GAUTUME TEISINGUS POWERUPS (YPAČ DoubleBomb)
+                this.abstractFactory = isStandard ? new StandartGameFactory() : new MiniGameFactory();
+                this.gameTemplate = this.abstractFactory.CreateGame();
+
+                var currentId = payload.GetProperty("current").GetString() ?? "";
+                isMyTurn = (currentId == myId);
+
+                lblStatus.Text = isMyTurn
+                    ? "Your turn (restored)."
+                    : "Opponent's turn (restored).";
+
+                placingShips = false;
+                shipPanel.Visible = false;
+                btnReady.Enabled = false;
+                btnPlaceShips.Enabled = false;
+                cmbPlacementMode.Enabled = false;
+                radioMiniGame.Enabled = false;
+                radioStandartGame.Enabled = false;
+
+                this.ownBoard.CellClicked -= OwnBoard_CellClickedForRemoval;
+                this.ownBoard.CellClicked -= OwnBoard_CellClickedForShield;
+                this.ownBoard.CellClicked += OwnBoard_CellClickedForShield;
+
+                // --- Laivai ---
+                myShips.Clear();
+                if (payload.TryGetProperty("ships", out var shipsElem) &&
+                    shipsElem.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var s in shipsElem.EnumerateArray())
+                    {
+                        myShips.Add(new ShipDto
+                        {
+                            x = s.GetProperty("x").GetInt32(),
+                            y = s.GetProperty("y").GetInt32(),
+                            len = s.GetProperty("len").GetInt32(),
+                            dir = s.GetProperty("dir").GetString() ?? "H"
+                        });
+                    }
+                    ownBoard.Ships = myShips;
+                }
+
+                // --- Lentos ---
+                var boardSelf = payload.GetProperty("boardSelf");
+                var boardEnemy = payload.GetProperty("boardEnemy");
+
+                var rowsSelf = boardSelf.EnumerateArray().ToList();
+                var rowsEnemy = boardEnemy.EnumerateArray().ToList();
+
+                for (int y = 0; y < rowsSelf.Count && y < ownBoard.Size; y++)
+                {
+                    var cellsSelf = rowsSelf[y].EnumerateArray().ToList();
+                    var cellsEnemy = rowsEnemy[y].EnumerateArray().ToList();
+
+                    for (int x = 0; x < cellsSelf.Count && x < ownBoard.Size; x++)
+                    {
+                        int vSelf = cellsSelf[x].GetInt32();
+                        int vEnemy = cellsEnemy[x].GetInt32();
+
+                        ownBoard.SetCell(x, y, MapIntToCellState(vSelf));
+                        enemyBoard.SetCell(x, y, MapIntToCellState(vEnemy));
+                    }
+                }
+
+                ownBoard.Invalidate();
+                enemyBoard.Invalidate();
+
+                // --- PowerUp būsenos iš serverio ---
+                powerUpsShown = true;
+
+                plusUsed = xUsed = superUsed = 0;
+                healUsed = 0;
+                safeShieldsUsed = invisibleShieldsUsed = 0;
+                doubleBombsUsed = 0;
+
+                if (payload.TryGetProperty("powerUps", out var pu) &&
+                    pu.ValueKind == JsonValueKind.Object)
+                {
+                    if (pu.TryGetProperty("healUsed", out var hu)) healUsed = hu.GetInt32();
+                    if (pu.TryGetProperty("safeShieldsUsed", out var ssu)) safeShieldsUsed = ssu.GetInt32();
+                    if (pu.TryGetProperty("invisibleShieldsUsed", out var iu)) invisibleShieldsUsed = iu.GetInt32();
+                    if (pu.TryGetProperty("plusUsed", out var plu)) plusUsed = plu.GetInt32();
+                    if (pu.TryGetProperty("xUsed", out var xu)) xUsed = xu.GetInt32();
+                    if (pu.TryGetProperty("superUsed", out var su)) superUsed = su.GetInt32();
+                    if (pu.TryGetProperty("doubleBombUsed", out var dbu)) doubleBombsUsed = dbu.GetInt32();
+                }
+
+                // 🔹 DABAR, KAI ŽINOM GAME TYPE, ATSTATOM MAX DoubleBomb
+                if (this.gameTemplate != null &&
+                    this.gameTemplate.Powerups.TryGetValue("DoubleBomb", out var dbCount))
+                {
+                    this.maxDoubleBombsCount = dbCount;
+                }
+                else
+                {
+                    this.maxDoubleBombsCount = 0;
+                }
+
+                // Jei iš serverio ateina išprotėję skaičiai – apribojam
+                if (maxDoubleBombsCount < 0) maxDoubleBombsCount = 0;
+                if (doubleBombsUsed < 0) doubleBombsUsed = 0;
+                if (doubleBombsUsed > maxDoubleBombsCount) doubleBombsUsed = maxDoubleBombsCount;
+
+                plusActive = xActive = superActive = healActive = false;
+                doubleBombActive = false;
+
+                btnPlus.Text = plusUsed >= MaxPlus ? "+ Shot (used)" : "+ Shot";
+                btnX.Text = xUsed >= MaxX ? "X Shot (used)" : "X Shot";
+                btnSuper.Text = superUsed >= MaxSuper ? "Super (used)" : "Super";
+                btnHeal.Text = healUsed >= MaxHeal ? "Heal used" : "Heal";
+                btnShieldSafe.Text = safeShieldsUsed >= MaxSafeShields ? "Shield (Safe) used" : "Shield (Safe)";
+                btnShieldInvisible.Text = invisibleShieldsUsed >= MaxInvisibleShields ? "Shield (Invisible) used" : "Shield (Invisible)";
+
+                btnPlus.BackColor = SystemColors.Control;
+                btnX.BackColor = SystemColors.Control;
+                btnSuper.BackColor = SystemColors.Control;
+                btnHeal.BackColor = SystemColors.Control;
+                btnShieldSafe.BackColor = SystemColors.Control;
+                btnShieldInvisible.BackColor = SystemColors.Control;
+                btnAreaShield.BackColor = SystemColors.Control;
+                btnDoubleBombPowerUp.BackColor = SystemColors.Control;
+
+                btnPlus.Enabled = powerUpsShown && (plusUsed < MaxPlus);
+                btnX.Enabled = powerUpsShown && (xUsed < MaxX);
+                btnSuper.Enabled = powerUpsShown && (superUsed < MaxSuper);
+                btnHeal.Enabled = powerUpsShown && (healUsed < MaxHeal);
+                btnShieldSafe.Enabled = powerUpsShown && (safeShieldsUsed < MaxSafeShields);
+                btnShieldInvisible.Enabled = powerUpsShown && (invisibleShieldsUsed < MaxInvisibleShields);
+                btnAreaShield.Enabled = powerUpsShown &&
+                    (safeShieldsUsed < MaxSafeShields || invisibleShieldsUsed < MaxInvisibleShields);
+
+                // 🔹 Double Bomb mygtukas pagal MAX ir USED
+                if (maxDoubleBombsCount > 0)
+                {
+                    btnDoubleBombPowerUp.Visible = powerUpsShown;
+                    btnDoubleBombPowerUp.Enabled = doubleBombsUsed < maxDoubleBombsCount;
+                    btnDoubleBombPowerUp.Text = doubleBombsUsed >= maxDoubleBombsCount
+                        ? "Double Bomb used"
+                        : "Double Bomb";
+                }
+                else
+                {
+                    btnDoubleBombPowerUp.Visible = false;
+                    btnDoubleBombPowerUp.Enabled = false;
+                }
+
+                lblPowerUpInfo.Visible = true;
+                UpdatePowerUpLabel();
+                SyncPowerUpsUI();
+
+                lblStatus.Text += " Game state restored.";
+            }
+            catch (Exception ex)
+            {
+                lblStatus.Text = "Failed to restore game state: " + ex.Message;
+            }
+        }
+
         private void BtnReplay_Click(object sender, EventArgs e)
         {
             if (CommandManager.TotalCommands == 0)
@@ -985,19 +1186,14 @@ namespace BattleshipClient
             if (cmbBoardStyle.SelectedItem == null)
                 return;
 
-            // konvertuojam pasirinkimą į enum reikšmę
             if (Enum.TryParse<BoardStyle>(cmbBoardStyle.SelectedItem.ToString(), out var selectedStyle))
             {
                 ownBoard.SetStyle(selectedStyle);
                 enemyBoard.SetStyle(selectedStyle);
                 lblStatus.Text = $"Lentos tema pakeista į: {selectedStyle}";
             }
-        } 
+        }
 
-        /// <summary>
-        /// Kvietimas iš Interpreter sluoksnio: paleidžia šūvį į priešą
-        /// pagal lentos koordinates (0..Size-1).
-        /// </summary>
         public void FireShotFromConsole(int boardX, int boardY, bool usePlus, bool useXShape, bool useSuper)
         {
             if (this.InvokeRequired)
@@ -1044,10 +1240,6 @@ namespace BattleshipClient
             EnemyBoard_CellClicked(enemyBoard, p);
         }
 
-        /// <summary>
-        /// Paleidžia atskirą giją, kuri klauso vartotojo įvesčių iš konsolės
-        /// ir perduoda jas CommandInterpreter.
-        /// </summary>
         private void StartConsoleInterpreter()
         {
             Task.Run(() =>
@@ -1105,4 +1297,4 @@ namespace BattleshipClient
             BtnRandomize_Click(this, EventArgs.Empty);
         }
     }
-}  
+}

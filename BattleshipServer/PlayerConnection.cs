@@ -25,6 +25,7 @@ namespace BattleshipServer
         public async Task ProcessAsync()
         {
             var buffer = new byte[8192];
+
             try
             {
                 while (Socket.State == WebSocketState.Open)
@@ -38,7 +39,11 @@ namespace BattleshipServer
 
                         if (result.MessageType == WebSocketMessageType.Close)
                         {
+                            Console.WriteLine($"[PlayerConnection] Close received from {Name} ({Id}).");
                             await Socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by client", CancellationToken.None);
+
+                            // NEW: pranešam GameManager'iui, kad žaidėjas atsijungė
+                            _manager.HandlePlayerDisconnected(this);
                             return;
                         }
 
@@ -47,19 +52,29 @@ namespace BattleshipServer
                     while (!result.EndOfMessage);
 
                     var msg = Encoding.UTF8.GetString(ms.ToArray());
-                    var dto = JsonSerializer.Deserialize<MessageDto>(msg, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    var dto = JsonSerializer.Deserialize<MessageDto>(msg, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+
                     if (dto != null)
                     {
                         await _manager.HandleMessageAsync(this, dto);
                     }
                 }
+
+                // NEW: jei kažkokiu būdu išėjom iš ciklo be explicit Close žinutės
+                Console.WriteLine($"[PlayerConnection] Socket for {Name} ({Id}) no longer open, treating as disconnect.");
+                _manager.HandlePlayerDisconnected(this);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[PlayerConnection] Error: {ex.Message}");
+                Console.WriteLine($"[PlayerConnection] Error for {Name} ({Id}): {ex.Message}");
+
+                // NEW: exception atveju taip pat laikom, kad žaidėjas atsijungė
+                _manager.HandlePlayerDisconnected(this);
             }
         }
-
 
         public async Task SendAsync(MessageDto dto)
         {

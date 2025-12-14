@@ -4,9 +4,6 @@ using BattleshipClient.Models;
 
 namespace BattleshipClient.TemplateMethod
 {
-    /// <summary>
-    /// Atsitiktinė laivų išdėstymo strategija.
-    /// </summary>
     public sealed class RandomShipPlacement : ShipPlacementTemplate
     {
         private readonly Random _rnd = new Random();

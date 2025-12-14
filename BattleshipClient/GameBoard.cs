@@ -13,7 +13,6 @@ namespace BattleshipClient
 {
     public enum CellState { Empty, Ship, Miss, Hit, Whole_ship_down, Shielded }
 
-    // --- Pridėti lentos režimai (Bridge stiliaus „abstrakcijos“ idėja) ---
     public enum BoardStyle
     {
         Classic,

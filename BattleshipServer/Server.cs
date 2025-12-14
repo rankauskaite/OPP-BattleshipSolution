@@ -32,7 +32,7 @@ namespace BattleshipServer
                     var webSocket = wsContext.WebSocket;
                     Console.WriteLine("New websocket connection accepted.");
                     var player = new PlayerConnection(webSocket, _manager);
-                    _ = player.ProcessAsync(); // run without awaiting
+                    _ = player.ProcessAsync();
                 }
                 else
                 {

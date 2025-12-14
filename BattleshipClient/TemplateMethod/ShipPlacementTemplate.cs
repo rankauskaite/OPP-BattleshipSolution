@@ -10,14 +10,8 @@ namespace BattleshipClient.TemplateMethod
         SpreadSafe
     }
 
-    /// <summary>
-    /// Template Method bazinė klasė laivų išdėstymui.
-    /// </summary>
     public abstract class ShipPlacementTemplate
     {
-        /// <summary>
-        /// Template Method – bendra laivų išdėstymo eiga.
-        /// </summary>
         public (List<ShipDto> ships, CellState[,] map) PlaceShips(int size, List<int> shipLengths)
         {
             var map = CreateEmptyMap(size);
@@ -37,7 +31,6 @@ namespace BattleshipClient.TemplateMethod
 
         protected virtual CellState[,] CreateEmptyMap(int size)
         {
-            // numatytasis – tuščia lenta (CellState.Empty)
             return new CellState[size, size];
         }
 
@@ -64,24 +57,16 @@ namespace BattleshipClient.TemplateMethod
             }
         }
 
-        /// <summary>Maksimalus bandymų skaičius vienam laivui.</summary>
         protected virtual int MaxPlacementTries => 200;
 
-        /// <summary>Hook – galima atlikti pasiruošimą prieš išdėstant laivus.</summary>
         protected virtual void Initialize(int size, List<int> shipLengths, CellState[,] map, List<ShipDto> ships) { }
 
-        /// <summary>
-        /// Abstraktus žingsnis – konkreti klasė nusprendžia, kur bandyti dėti laivą.
-        /// </summary>
         protected abstract (int x, int y, bool horiz) ChoosePosition(
             int size,
             int length,
             CellState[,] map,
             List<ShipDto> ships);
 
-        /// <summary>
-        /// Bendras validavimo žingsnis – bendra logika visoms strategijoms.
-        /// </summary>
         protected virtual bool CanPlace(int length, int x, int y, bool horiz, CellState[,] map)
         {
             if (horiz && x + length > map.GetLength(1)) return false;
@@ -97,9 +82,6 @@ namespace BattleshipClient.TemplateMethod
             return true;
         }
 
-        /// <summary>
-        /// Bendras žingsnis – pažymime laivo langelius ir pridedame į ships sąrašą.
-        /// </summary>
         protected virtual void ApplyShip(int length, int x, int y, bool horiz, CellState[,] map, List<ShipDto> ships)
         {
             for (int i = 0; i < length; i++)
@@ -118,17 +100,9 @@ namespace BattleshipClient.TemplateMethod
             });
         }
 
-        /// <summary>
-        /// Hook – kas nutinka, jei nepavyko išdėstyti laivo.
-        /// </summary>
         protected virtual void HandlePlacementFailure(int shipLength)
         {
-            // galima loginti arba vėliau pridėti išimtį, bet dabar tyli
         }
-
-        /// <summary>
-        /// Hook – pabaigos žingsnis, jei reikia.
-        /// </summary>
         protected virtual void Finalize(int size, List<int> shipLengths, CellState[,] map, List<ShipDto> ships)
         {
         }

@@ -9,15 +9,6 @@ namespace BattleshipClient.Services
         {
         }
 
-        //// NAUJAS IMPLEMENTAVIMAS – naudoja Template Method
-        //public (List<ShipDto> ships, CellState[,] map) RandomizeShips(int size, List<int> shipLengths)
-        //{
-        //    // čia pasirenkame konkrečią strategiją (RandomShipPlacement).
-        //    // Jei tiks – vėliau galėsim padaryti, kad vartotojas galėtų pasirinkti EdgeShipPlacement.
-        //    var strategy = new RandomShipPlacement();
-        //    return strategy.PlaceShips(size, shipLengths);
-        //}
-
         public (List<ShipDto> ships, CellState[,] map) RandomizeShips(int size, List<int> shipLengths, PlacementMode mode)
         {
             ShipPlacementTemplate strategy = mode switch
